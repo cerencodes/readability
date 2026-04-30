@@ -13,10 +13,12 @@ library(modelsummary)
 library(flextable)
 library(officer)
 
-# Prefer a dedicated data folder when present, but keep root-level fallback
-# so the script remains portable across old and new repo layouts.
-data_dir <- if (dir.exists("data")) "data" else "."
+# Resolve paths whether the script is run from the repo root or from script/.
+project_dir <- if (dir.exists("data")) "." else if (dir.exists(file.path("..", "data"))) ".." else "."
+data_dir <- if (dir.exists(file.path(project_dir, "data"))) file.path(project_dir, "data") else project_dir
+results_dir <- file.path(project_dir, "results")
 data_file <- function(filename) file.path(data_dir, filename)
+results_file <- function(filename) file.path(results_dir, filename)
 
 # ==============================================================================
 # IMPORT DATA ----
@@ -1039,7 +1041,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
     gof_omit = "Adj|F|Log|RMSE",        # optional: simplify GOF panel
     title = "Appendix B1. Fixed-Effects OLS Models Predicting Empathy (HC3 Robust SEs)",
     notes = "Question fixed effects included but not shown. Robust (HC3) standard errors in parentheses.",
-    output = "Appendix_B1_Main_Regression_Results.docx"
+    output = results_file("Appendix_B1_Main_Regression_Results.docx")
   )  
 
   # Appendix B2
@@ -1064,7 +1066,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
     stars = TRUE,
     title = "Appendix B2. Sensitivity Analysis: Drop Influential Observations (HC3 Robust SEs)",
     notes = "Question fixed effects included but not shown. Robust (HC3) standard errors in parentheses.",
-    output = "Appendix_B2_Sensitivity_Drop_Influential.docx"
+    output = results_file("Appendix_B2_Sensitivity_Drop_Influential.docx")
   )
 
   # Appendix B3
@@ -1087,7 +1089,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
     stars = TRUE,
     title = "Appendix B3. Cluster-Robust Standard Errors (Clustered by Question)",
     notes = "Question fixed effects included but not shown. Standard errors clustered by conversation_id.",
-    output = "Appendix_B3_Clustered_SE.docx"
+    output = results_file("Appendix_B3_Clustered_SE.docx")
   )
 
 
@@ -1137,7 +1139,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
   )
   doc <- body_add_flextable(doc, ft)
   
-  #print(doc, target = "Appendix_D1_VIF_GVIF.docx")  
+  #print(doc, target = results_file("Appendix_D1_VIF_GVIF.docx"))  
   
   # Appendix D2
   # Heteroskedasticity Diagnostics (Breusch–Pagan Test)
@@ -1174,7 +1176,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
   )
   doc <- body_add_flextable(doc, ft)
   
-  #print(doc, target = "Appendix_D2_Breusch_Pagan.docx")
+  #print(doc, target = results_file("Appendix_D2_Breusch_Pagan.docx"))
   
   # Appendix D4
   # Residual Normality Diagnostics (Shapiro–Wilk Test)
@@ -1209,7 +1211,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
   )
   doc <- body_add_flextable(doc, ft)
   
-  #print(doc, target = "Appendix_D4_Residual_Normality.docx")
+  #print(doc, target = results_file("Appendix_D4_Residual_Normality.docx"))
  
   
 # Appendix E2
@@ -1253,7 +1255,7 @@ doc <- body_add_par(doc,
 )
 doc <- body_add_flextable(doc, ft)
 
-#print(doc, target = "Appendix_E2_DaleChall_Subgroup_by_LLM.docx")
+#print(doc, target = results_file("Appendix_E2_DaleChall_Subgroup_by_LLM.docx"))
 
 ##############
   test_indiv <- test3_prompt2_newmodel %>%

@@ -5,10 +5,12 @@ library(stringi)
 library(data.table)
 library(textstem)
 
-# Prefer a dedicated data folder when present, but keep root-level fallback
-# so the script remains portable across old and new repo layouts.
-data_dir <- if (dir.exists("data")) "data" else "."
+# Resolve paths whether the script is run from the repo root or from script/.
+project_dir <- if (dir.exists("data")) "." else if (dir.exists(file.path("..", "data"))) ".." else "."
+data_dir <- if (dir.exists(file.path(project_dir, "data"))) file.path(project_dir, "data") else project_dir
+results_dir <- file.path(project_dir, "results")
 data_file <- function(filename) file.path(data_dir, filename)
+results_file <- function(filename) file.path(results_dir, filename)
 
 
 
