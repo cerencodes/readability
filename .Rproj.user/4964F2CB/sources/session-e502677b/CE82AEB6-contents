@@ -1,0 +1,148 @@
+---
+title: "AI-Powered Social Media & Sales Analysis for ODI Grips"
+subtitle: "AO2 Presentation"
+author: "Ceren Unal"
+institute: "IBM 6530, Cal Poly Pomona"
+date: today 
+format: 
+  revealjs:
+    theme: moon
+    width: 1600
+    height: 900
+    footer: ODI Project
+    transition: slide
+    transition-speed: default
+    incremental: false
+    toc: true
+    toc-depth: 1
+    slide-number: true
+    scrollable: true
+    smaller: true
+    code-fold: false
+    code-overflow: wrap
+    number-sections: false
+    number-depth: 5
+    embed-resources: true
+    css: styles.css
+editor: visual
+execute: 
+  echo: true
+  freeze: auto
+---
+
+# Introduction
+
+## Problem statement
+
+The customer support team for ODI Grips is facing certain challenges:
+
+::: {.medium-small .incremental}
+-   High message volume with limited support
+-   Beginners don’t know their riding style\
+-   Product information feels overly technical\
+-   No system in place for consistent product recommendations
+:::
+
+. . .
+
+*So, what’s the result?*
+
+Riders get confused, overwhelmed, or drop off before buying.
+
+## Analytics Objective - AO2
+
+To develop and apply an LLM-based evaluation framework for assessing chatbot application performance, analyzing readability through quantitative scoring and comparative benchmarking.
+
+::: {.medium-small .incremental}
+-   **H1**: Readability differs by Model
+
+-   **H2**: Readability differs by System Prompt
+
+-   **H3**: There is a Model × System Prompt interaction
+:::
+
+## Importance
+
+Large Language Models have a tendency to produce *verbose and complex* output, resulting in bad user experience.
+
+Optimizing the readability of chatbot text responses helps make product recommendations more accessible to the average user, improving the customer journey.
+
+# Literature review {.smaller}
+
+Text readability is evaluated across encompass numerous linguistic levels (Gkikas et al., 2022) including:
+
+-   Vocabulary choice
+
+-   Word length
+
+-   Sentence length
+
+-   Structural complexity
+
+-   Lexical richness
+
+There have been many different readability formulas and measures developed to determine the effectiveness of written communication in influencing one’s ability to engage with presented information (Davis et al., 2019).
+
+The most common index to measure readability of a text the **Flesch–Kincaid Grade Level** (FKGL) which estimates the level of education (measured in grades) needed for the reader to understand the test, based on average sentence and word length (Wang, Miller, Schmitt & Wen, 2013).
+
+For short content such as social media **The Dale Chall formula** is recommended (Pancer et al., 2019). It uses a list of words known to school aged students to assess word familiarity and syntactic complexity (Narman et al., 2018).
+
+**Lexical diversity**, refers to the number and variety of words used in a text (McCarthy & Jarvis, 2010). It can be assessed via measure of textual lexical diversity (MTLD) and hypergeometric Distribution D (HDD) (McCarthy & Jarvis, 2010); with MTLD being more suitable to analyze short-text data (Koizumi & In'nami, 2012).
+
+# Methods
+
+## Data
+
+The data for this analytics objective are the chatbot responses to user questions. The transcript from user interactions with the chatbot will be analyzed for readability.
+
+```{r}
+library(readr)
+dataset <- read_csv("ODI_Gold_Standard_Full_Product_Names.csv")
+head(dataset)
+```
+
+## Sample
+
+180 chatbot responses (30 questions \* 3 models \* 2 prompts)
+
+## Measures
+
+::::: columns
+::: {.column width="50%"}
+**Independent variables**: Model, Prompt
+:::
+
+::: {.column width="50%"}
+**Dependent variables**: Flesch–Kincaid Grade Level, Dale–Chall Readability Score, Measure of Textual Lexical Diversity (MTLD), Hypergeometric Distribution D (HDD)
+:::
+:::::
+
+## Analytics Methods
+
+**Linear mixed-effects model**
+
+> Readability \~ Model \* SystemPrompt + (1 \| QuestionID)
+
+This regression analysis will be assessing the impact of the change in model and prompt on readability metrics.
+
+# References {.scrollable}
+
+-   Yu, J., Hong, W. C. H., & Egger, R. (2024). The Art of Post Captions: Readability and User Engagement on Social Media. *Journal of Travel Research*, *64*(4), 853-866. <https://doi.org/10.1177/00472875241228822> (Original work published 2025)
+
+-   Guo, S., Yang, CL., Lin, XP. *et al.* Evaluating Artificial Intelligence-Generated Patient Education Materials for Bariatric Surgery: Comparative Analysis of Response Quality, Reliability, and Readability Across ChatGPT and DeepSeek Models. *OBES SURG* **35**, 4628–4638 (2025). https://doi.org/10.1007/s11695-025-08249-x
+
+-   Gunesli, I., Aksun, S., Fathelbab, J. *et al.* Comparative evaluation of ChatGPT-4, ChatGPT-3.5 and Google Gemini on PCOS assessment and management based on recommendations from the 2023 guideline. *Endocrine* **88**, 315–322 (2025). https://doi.org/10.1007/s12020-024-04121-7
+
+-   Mine Büker, Gamze Mercan, Readability, accuracy and appropriateness and quality of AI chatbot responses as a patient information source on root canal retreatment: A comparative assessment, International Journal of Medical Informatics, Volume 201, 2025, 105948, ISSN 1386-5056, <https://doi.org/10.1016/j.ijmedinf.2025.105948.>
+
+-   Pancer, E., Chandler, V., Poole, M., & Noseworthy, T. J. (2019). How readability shapes social media engagement. Journal of Consumer Psychology, 29(2), 262–270. https://doi.org/10.1002/jcpy.1073
+
+-   Davis, S. W., Horváth, C., Gretry, A., & Belei, N. (2019). Say what? How the interplay of tweet readability and brand hedonism affects consumer engagement. Journal of Business Research, 100, 150–164. https://doi.org/10.1016/j.jbusres.2019.01.071
+
+-   Narman, H. S., Uulu, A. D., & Liu, J. (2018). Profile analysis for cryptocurrency in social media\[Conference session\]. IEEE International Symposium on Signal Processing and Information Technology
+
+-   Koizumi, R., & In'nami, Y. (2012). WITHDRAWN: Effects of text length on lexical diversity measures: Using short texts with less than 200 tokens. System, 40(4), 522–532. https://doi. org/10.1016/j.system.2012.10.017
+
+-   McCarthy, P. M., & Jarvis, S. (2010). Mtld, vocd-D, and HD-D: A validation study of sophisticated approaches to lexical diversity assessment. Behavior Research Methods, 42(2), 381–392. https://doi.org/10.3758/BRM.42.2.381
+
+-   Wang, L. W., Miller, M. J., Schmitt, M. R., & Wen, F. K. (2013). Assessing readability formula differences with written health information materials: Application, results, and recommendations. Research in Social and Administrative Pharmacy, 9(5), 503–516.10.1016/j.sapharm.2012.05.009.

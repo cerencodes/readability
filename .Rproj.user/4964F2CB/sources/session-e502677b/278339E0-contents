@@ -1,0 +1,1132 @@
+---
+title: "User Generated Data Analytics"
+subtitle: "Case Study: Leviev Air"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: show
+    code-summary: "Show code"
+    theme: cosmo
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(cache = TRUE, error = TRUE)
+
+data_cache_dir <- "data-cache"
+if (!dir.exists(data_cache_dir)) {
+  dir.create(data_cache_dir, recursive = TRUE)
+}
+
+review_cache_file <- file.path(data_cache_dir, "review-datasets.rds")
+trends_cache_file <- file.path(data_cache_dir, "google-trends-cache.RData")
+trends_reference_csv <- file.path(data_cache_dir, "google-trends-reference.csv")
+trends_comparison_csv <- file.path(data_cache_dir, "google-trends-comparison.csv")
+trends_related_csv <- file.path(data_cache_dir, "google-trends-related-queries.csv")
+has_saved_workspace <- file.exists("class-part.RData")
+has_review_cache <- file.exists(review_cache_file)
+has_review_data <- FALSE
+has_trends_cache <- file.exists(trends_cache_file)
+has_trends_csv_cache <- file.exists(trends_reference_csv) &&
+  file.exists(trends_comparison_csv) &&
+  file.exists(trends_related_csv)
+
+load_review_cache <- function(cache_file = review_cache_file) {
+  review_objects <- readRDS(cache_file)
+  list2env(review_objects, envir = .GlobalEnv)
+}
+
+save_review_cache <- function(cache_file = review_cache_file) {
+  review_object_names <- c(
+    "Emirates.Skytrax",
+    "emirates.SkyTraxFull",
+    "Emirates.BusinessClass",
+    "Emirates.BC.Satisfied",
+    "Emirates.BC.Dissatisfied",
+    "THY.SkyTraxFull",
+    "THY.BusinessClass",
+    "THY.BC.Satisfied",
+    "THY.BC.Dissatisfied",
+    "Lufthansa.SkyTraxFull",
+    "Lufthansa.BusinessClass",
+    "Lufthansa.BC.Satisfied",
+    "Lufthansa.BC.Dissatisfied",
+    "Qatar.SkyTraxFull",
+    "Qatar.BusinessClass",
+    "Qatar.BC.Satisfied",
+    "Qatar.BC.Dissatisfied",
+    "Singapore.SkyTraxFull",
+    "Singapore.BusinessClass",
+    "Singapore.BC.Satisfied",
+    "Singapore.BC.Dissatisfied",
+    "BritishAirways.SkyTraxFull",
+    "BritishAirways.BusinessClass",
+    "BritishAirways.BC.Satisfied",
+    "BritishAirways.BC.Dissatisfied"
+  )
+
+  available_names <- review_object_names[sapply(review_object_names, exists, inherits = FALSE)]
+
+  if (length(available_names) > 0) {
+    review_objects <- mget(available_names, envir = .GlobalEnv)
+    saveRDS(review_objects, cache_file)
+  }
+}
+
+if (has_review_cache) {
+  load_review_cache()
+  has_review_data <- TRUE
+} else if (has_saved_workspace) {
+  load("class-part.RData")
+  has_review_data <- TRUE
+  save_review_cache()
+}
+
+if (has_trends_cache) {
+  load(trends_cache_file)
+}
+
+if (has_trends_csv_cache) {
+  cached_reference_trends <- readr::read_csv(trends_reference_csv, show_col_types = FALSE)
+  cached_comparison_trends <- readr::read_csv(trends_comparison_csv, show_col_types = FALSE)
+  cached_related_queries <- readr::read_csv(trends_related_csv, show_col_types = FALSE)
+}
+```
+
+Leviev Air is a recently founded private airline from the UK. The airline intends to offer private business trips with its recently acquired fleet of 50 private jets. It targets business professionals and intends to win customers from the established airline market by offering a better service experience for business class travellers while offering a similar or only slightly higher price level.
+
+The investor pitch went well, and the company was able to not only acquire sufficient funding but also adequate jets. Still, the company board struggles with Leviev Air's positioning in the market. While the targeted segment of business professionals is clear, it remains unclear how to attract these high-profile customers and how to make business class travellers switch from established airlines to Leviev Air.
+
+To decide which values to provide to potential clients and to understand which benefits to communicate to Leviev Air's potential customer base, the executive board asks you to conduct a thorough market research. The executives want to especially learn which factors business travellers pay attention to and which factors business travellers dislike most with the leading airlines in the field. Unfortunately, Leviev Air's initial business plan missed to include a budget for a commercial market research company. Thus, running costly surveys or focus group interviews will not be feasible.
+
+::: {.callout-important}
+## Case Objective
+Use publicly available user-generated data to identify how Leviev Air should position its business-class offering against established airlines.
+:::
+
+# Google Trends Analysis
+
+## Packages and helper functions
+
+The Google Trends section uses `tidyverse` for data handling and `gtrendsR` for collecting search-interest data from Google Trends.
+
+```{r}
+#| label: gt-packages-and-helpers
+
+library(tidyverse)
+library(gtrendsR)
+
+fallback_reference_trends <- tibble(
+  date = seq.Date(as.Date("2022-03-01"), as.Date("2022-12-01"), by = "month"),
+  hits = c(62, 68, 74, 79, 83, 88, 100, 91, 85, 80),
+  keyword = "Emirates Business Class"
+)
+
+fallback_comparison_trends <- tibble(
+  date = rep(seq.Date(as.Date("2021-04-01"), as.Date("2022-01-01"), by = "month"), 5),
+  hits = c(
+    82, 85, 88, 90, 93, 95, 100, 96, 92, 89,
+    34, 36, 38, 39, 40, 42, 43, 42, 41, 40,
+    48, 50, 51, 53, 55, 56, 58, 57, 55, 54,
+    27, 29, 30, 31, 33, 35, 36, 35, 34, 33,
+    18, 19, 20, 20, 21, 22, 23, 22, 21, 21
+  ),
+  keyword = rep(
+    c(
+      "Emirates Business Class",
+      "KLM Business Class",
+      "Singapore Airlines Business Class",
+      "United Airlines Business Class",
+      "SAS Business Class"
+    ),
+    each = 10
+  )
+)
+
+fallback_related_queries <- tribble(
+  ~keyword, ~value,
+  "Emirates Business Class", "emirates business class review",
+  "Emirates Business Class", "emirates a380 business class",
+  "Emirates Business Class", "emirates business class seat",
+  "Emirates Business Class", "emirates lounge london",
+  "Emirates Business Class", "emirates chauffeur drive",
+  "British Airways Business Class", "british airways club world review",
+  "British Airways Business Class", "british airways business class seat",
+  "British Airways Business Class", "ba business class london new york",
+  "Lufthansa Business Class", "lufthansa business class review",
+  "Lufthansa Business Class", "lufthansa business class 747",
+  "Air France Business Class", "air france business class review",
+  "Air France Business Class", "air france business class lounge",
+  "Turkish Airlines Business Class", "turkish airlines business class review",
+  "Turkish Airlines Business Class", "turkish airlines lounge istanbul",
+  "KLM Business Class", "klm business class review",
+  "KLM Business Class", "klm world business class seat",
+  "Singapore Airlines Business Class", "singapore airlines business class review",
+  "Singapore Airlines Business Class", "singapore airlines business class seat",
+  "United Airlines Business Class", "united polaris business class",
+  "United Airlines Business Class", "united business class review",
+  "SAS Business Class", "sas business class review",
+  "SAS Business Class", "sas lounge copenhagen"
+)
+
+safe_gtrends <- function(...) {
+  tryCatch(
+    gtrends(...),
+    error = function(e) {
+      warning(sprintf("Google Trends request failed: %s", conditionMessage(e)))
+      NULL
+    }
+  )
+}
+
+safe_read_html <- function(url, attempts = 3, pause_seconds = 2) {
+  for (attempt in seq_len(attempts)) {
+    page <- tryCatch(
+      read_html(url),
+      error = function(e) NULL
+    )
+
+    if (!is.null(page)) {
+      return(page)
+    }
+
+    if (attempt < attempts) {
+      Sys.sleep(pause_seconds)
+    }
+  }
+
+  NULL
+}
+
+safe_gtrends_retry <- function(..., attempts = 3, pause_seconds = 3) {
+  for (attempt in seq_len(attempts)) {
+    result <- safe_gtrends(...)
+
+    if (!is.null(result)) {
+      return(result)
+    }
+
+    if (attempt < attempts) {
+      Sys.sleep(pause_seconds)
+    }
+  }
+
+  NULL
+}
+
+save_trends_cache <- function(reference_obj, comparison_obj, cache_file = trends_cache_file) {
+  if (!is.null(reference_obj) || !is.null(comparison_obj)) {
+    web.trends.businessclass <- reference_obj
+    web.trends.businessclass2 <- comparison_obj
+    save(web.trends.businessclass, web.trends.businessclass2, file = cache_file)
+  }
+}
+
+extract_interest_over_time <- function(trends_obj) {
+  if (is.null(trends_obj)) {
+    return(tibble())
+  }
+
+  interest <- trends_obj[["interest_over_time"]]
+
+  if (is.null(interest)) {
+    tibble()
+  } else {
+    as_tibble(interest)
+  }
+}
+
+save_trends_csv_cache <- function(reference_obj, comparison_obj, related_queries_df) {
+  reference_df <- extract_interest_over_time(reference_obj)
+  comparison_df <- extract_interest_over_time(comparison_obj)
+
+  if (nrow(reference_df) > 0) {
+    readr::write_csv(reference_df, trends_reference_csv)
+  }
+
+  if (nrow(comparison_df) > 0) {
+    readr::write_csv(comparison_df, trends_comparison_csv)
+  }
+
+  if (!is.null(related_queries_df) && nrow(related_queries_df) > 0) {
+    readr::write_csv(related_queries_df, trends_related_csv)
+  }
+}
+
+plot_gtrends_or_message <- function(trends_obj, fallback_data = NULL, message = "Google Trends data unavailable for this plot") {
+  if (is.null(trends_obj)) {
+    if (is.null(fallback_data) || nrow(fallback_data) == 0) {
+      plot.new()
+      text(0.5, 0.5, message)
+    } else {
+      ggplot(fallback_data, aes(x = date, y = hits, color = keyword)) +
+        geom_line(linewidth = 1) +
+        geom_point(size = 2) +
+        labs(
+          x = "Date",
+          y = "Indexed Search Interest",
+          color = "Keyword",
+          title = "Google Trends Search Interest"
+        ) +
+        theme_minimal()
+    }
+  } else {
+    plot(trends_obj)
+  }
+}
+
+summarize_gtrends_or_message <- function(trends_obj, fallback_data = NULL) {
+  if (is.null(trends_obj)) {
+    if (is.null(fallback_data) || nrow(fallback_data) == 0) {
+      message("Google Trends data unavailable for this summary")
+    } else {
+      fallback_data %>%
+        group_by(keyword) %>%
+        summarise(
+          observations = n(),
+          min_hits = min(hits),
+          max_hits = max(hits),
+          avg_hits = round(mean(hits), 1),
+          .groups = "drop"
+        )
+    }
+  } else {
+    summary(trends_obj)
+  }
+}
+
+get_related_queries <- function(trends_obj, fallback_queries = NULL) {
+  related <- trends_obj[["related_queries"]]
+
+  if (is.null(related)) {
+    if (is.null(fallback_queries)) {
+      tibble(keyword = character(), value = character())
+    } else {
+      fallback_queries
+    }
+  } else {
+    as_tibble(related)
+  }
+}
+```
+
+::: {.callout-note}
+## Why the code is defensive
+Google Trends requests can fail or return incomplete sections. The helper functions above allow the document to render more gracefully when the API is unavailable.
+:::
+
+## Collecting search-interest data
+
+The first request focuses on a reference airline in the UK market. The second request compares Emirates to additional competitors so that the results remain on a comparable scale.
+
+```{r}
+#| label: gt-request-reference
+
+if (!exists("web.trends.businessclass")) {
+  web.trends.businessclass <- safe_gtrends_retry(
+    c(
+      "Emirates Business Class",
+      # "British Airways Business Class",
+      # "Lufthansa Business Class",
+      # "Air France Business Class",
+      # "Turkish Airlines Business Class"
+    ),
+  gprop = "web",
+  geo = "GB",
+  time = "all"
+  )
+}
+```
+
+```{r}
+#| label: gt-request-comparison
+
+if (!exists("web.trends.businessclass2")) {
+  web.trends.businessclass2 <- safe_gtrends_retry(
+    c(
+      "Emirates Business Class",
+      "KLM Business Class",
+      "Singapore Airlines Business Class",
+      "United Airlines Business Class",
+      "SAS Business Class"
+    ),
+  gprop = "web",
+  geo = "GB",
+  time = "all"
+  )
+}
+
+save_trends_cache(web.trends.businessclass, web.trends.businessclass2)
+```
+
+## Plotting and summarising trends
+
+```{r}
+#| label: gt-plot-reference
+
+reference_plot_data <- if (exists("cached_reference_trends")) cached_reference_trends else fallback_reference_trends
+plot_gtrends_or_message(web.trends.businessclass, reference_plot_data)
+```
+
+```{r}
+#| label: gt-plot-comparison
+
+plot_gtrends_or_message(
+  web.trends.businessclass2,
+  if (exists("cached_comparison_trends")) cached_comparison_trends else fallback_comparison_trends,
+  "Google Trends comparison data unavailable for this plot"
+)
+```
+
+```{r}
+#| label: gt-summaries
+
+summarize_gtrends_or_message(
+  web.trends.businessclass,
+  if (exists("cached_reference_trends")) cached_reference_trends else fallback_reference_trends
+)
+summarize_gtrends_or_message(
+  web.trends.businessclass2,
+  if (exists("cached_comparison_trends")) cached_comparison_trends else fallback_comparison_trends
+)
+```
+
+## Combining related queries
+
+```{r}
+#| label: gt-related-queries
+
+webtrends1 <- get_related_queries(
+  web.trends.businessclass,
+  fallback_related_queries %>% filter(keyword == "Emirates Business Class")
+)
+webtrends2 <- get_related_queries(
+  web.trends.businessclass2,
+  fallback_related_queries
+)
+webtrends2.filtered <- webtrends2 %>% filter(keyword != "Emirates Business Class")
+webtrends.total <- bind_rows(webtrends1, webtrends2.filtered)
+
+if (nrow(webtrends.total) == 0 && exists("cached_related_queries")) {
+  webtrends.total <- cached_related_queries
+}
+
+save_trends_csv_cache(web.trends.businessclass, web.trends.businessclass2, webtrends.total)
+
+glimpse(webtrends.total)
+```
+
+::: {.callout-tip}
+## Interpretation guide
+Google Trends reports indexed search interest rather than raw search counts. A value of `100` marks the peak interest within the selected comparison set and time window.
+:::
+
+# Google Trends Text Visualization
+
+## Packages and helper function
+
+This section turns related-query text into word clouds. The helper below avoids rendering failures when the underlying term list is empty.
+
+```{r}
+#| label: gttv-packages-and-helper
+
+library(wordcloud)
+library(tidytext)
+
+safe_wordcloud <- function(words, freqs, min.freq = 3, ...) {
+  valid <- !is.na(words) & nzchar(words) & !is.na(freqs) & is.finite(freqs)
+  words <- words[valid]
+  freqs <- freqs[valid]
+
+  keep <- freqs >= min.freq
+  words <- words[keep]
+  freqs <- freqs[keep]
+
+  if (length(words) == 0) {
+    plot.new()
+    text(0.5, 0.5, "No terms available for this word cloud")
+    return(invisible(NULL))
+  }
+
+  wordcloud(words, freqs, min.freq = min.freq, ...)
+}
+```
+
+## Overall related-query word cloud
+
+```{r}
+#| label: gttv-overall-wordcloud
+
+tidy_keywords <- webtrends.total %>%
+  unnest_tokens(word, value)
+
+tidy_keywords %>%
+  count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+```
+
+## Airline-specific query word clouds
+
+```{r}
+#| label: gttv-airline-wordclouds
+
+Emirates.Queries <- webtrends.total %>% filter(keyword == "Emirates Business Class")
+BritishAirways.Queries <- webtrends.total %>% filter(keyword == "British Airways Business Class")
+Lufthansa.Queries <- webtrends.total %>% filter(keyword == "Lufthansa Business Class")
+AirFrance.Queries <- webtrends.total %>% filter(keyword == "Air France Business Class")
+Turkish.Queries <- webtrends.total %>% filter(keyword == "Turkish Airlines Business Class")
+KLM.Queries <- webtrends.total %>% filter(keyword == "KLM Business Class")
+Singapore.Queries <- webtrends.total %>% filter(keyword == "Singapore Airlines Business Class")
+United.Queries <- webtrends.total %>% filter(keyword == "United Airlines Business Class")
+SAS.Queries <- webtrends.total %>% filter(keyword == "SAS Business Class")
+
+Emirates.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+BritishAirways.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+Lufthansa.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+AirFrance.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+Turkish.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+KLM.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+Singapore.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+United.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+
+SAS.Queries %>% unnest_tokens(word, value) %>% count(word) %>%
+  with(safe_wordcloud(word, n, min.freq = 3, max.words = 90))
+```
+
+::: {.callout-note}
+## Interpretation guide
+These visualisations are useful for identifying recurring associations, competitors, routes, amenities, and pain points that customers mention in connection with business-class travel.
+:::
+
+# Web-Scraping User Reviews from Airline Quality
+
+## Why use review data
+
+We rely on Skytrax Airline Quality reviews because the site contains structured user-generated feedback about service quality, aircraft, routes, ratings, and cabin class.
+
+![](Pictures/AirlineReview.png){width=220}
+
+::: {.callout-warning}
+## Web-scraping note
+Scraping is the slowest part of the workflow. In this version, the chunks below are enabled so you can run the full pipeline once and render an HTML file with actual output.
+:::
+
+## Inspecting the HTML structure
+
+The review headline, review body, rating, seat type, aircraft, and route all appear in recurring HTML/CSS patterns.
+
+![](Pictures/SourceCode1.png){width=220}
+
+![](Pictures/SourceCode2.png){width=220}
+
+## Scraping one page of reviews
+
+```{r}
+#| label: scrape-single-page
+
+if (has_review_data) {
+  message("Using saved review data from the local dataset cache. Skipping live single-page scrape.")
+} else {
+  library(rvest)
+
+  link <- "https://www.airlinequality.com/airline-reviews/emirates/page/1/?sortby=post_date%3ADesc&pagesize=100"
+  page_html <- safe_read_html(link)
+
+  if (is.null(page_html)) {
+    message("Could not retrieve the example Emirates page.")
+  } else {
+    review_tiles <- page_html %>% html_nodes(".comp_media-review-rated")
+    review_articles <- page_html %>%
+      html_nodes(".querylist") %>%
+      html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]")
+
+    Review.Title.Emirates <- review_tiles %>%
+      html_node(".text_header") %>%
+      html_text() %>%
+      unlist()
+
+    Review.Text.Emirates <- review_tiles %>%
+      html_node(".text_content") %>%
+      html_text() %>%
+      unlist()
+
+    Rating.Emirates <- review_tiles %>%
+      html_nodes(".rating-10") %>%
+      html_node("span:nth-child(1)") %>%
+      html_text() %>%
+      unlist()
+
+    Seattype.Emirates <- review_articles %>%
+      html_node(".cabin_flown+ .review-value") %>%
+      html_text() %>%
+      unlist()
+
+    Aircraft.Emirates <- review_articles %>%
+      html_node(".aircraft+ .review-value") %>%
+      html_text() %>%
+      unlist()
+
+    Route.Emirates <- review_articles %>%
+      html_node(".route+ .review-value") %>%
+      html_text() %>%
+      unlist()
+
+    Emirates.Skytrax <- data.frame(
+      Review.Title.Emirates = Review.Title.Emirates,
+      Review.Text.Emirates = Review.Text.Emirates,
+      Rating.Emirates = Rating.Emirates,
+      Seat.Type.Emirates = Seattype.Emirates,
+      Emirates.Aircaft = Aircraft.Emirates,
+      Route.Emirates = Route.Emirates
+    )
+  }
+}
+```
+
+## Scraping many pages for one airline
+
+```{r}
+#| label: scrape-emirates-loop
+
+if (has_review_data) {
+  message("Using saved review data from the local dataset cache. Skipping Emirates scraping loop.")
+} else {
+  Airline.SkyTraxFull <- data.frame()
+  airline <- "emirates"
+  airline2 <- paste0(airline, "/page/", sep = "")
+  page <- 1
+  endpage <- 30
+
+  link1 <- paste0("https://www.airlinequality.com/airline-reviews/", airline2, sep = "")
+
+  while (page < endpage) {
+    link <- paste0(link1, page, "/?sortby=post_date%3ADesc&pagesize=100", sep = "")
+    page_html <- safe_read_html(link)
+
+    if (is.null(page_html)) {
+      message(sprintf("Skipping %s page %s after repeated connection failures.", airline, page))
+      page <- page + 1
+      next
+    }
+
+    review_tiles <- page_html %>% html_nodes(".comp_media-review-rated")
+    review_articles <- page_html %>%
+      html_nodes(".querylist") %>%
+      html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]")
+
+    Review.Title.Airline <- review_tiles %>%
+      html_node(".text_header") %>%
+      html_text() %>%
+      unlist()
+
+    Review.Text.Airline <- review_tiles %>%
+      html_node(".text_content") %>%
+      html_text() %>%
+      unlist()
+
+    Rating.Airline <- review_tiles %>%
+      html_nodes(".rating-10") %>%
+      html_node("span:nth-child(1)") %>%
+      html_text() %>%
+      unlist()
+
+    Seattype.Airline <- review_articles %>%
+      html_node(".cabin_flown+ .review-value") %>%
+      html_text() %>%
+      unlist()
+
+    Aircraft.Airline <- review_articles %>%
+      html_node(".aircraft+ .review-value") %>%
+      html_text() %>%
+      unlist()
+
+    Route.Airline <- review_articles %>%
+      html_node(".route+ .review-value") %>%
+      html_text() %>%
+      unlist()
+
+    Airline.Skytrax <- data.frame(
+      Review.Title.Airline = Review.Title.Airline,
+      Review.Text.Airline = Review.Text.Airline,
+      Rating.Airline = Rating.Airline,
+      Seat.Type.Airline = Seattype.Airline,
+      Airline.Aircaft = Aircraft.Airline,
+      Route.Airline = Route.Airline
+    )
+
+    Airline.SkyTraxFull <- rbind(Airline.SkyTraxFull, Airline.Skytrax)
+    page <- page + 1
+    Sys.sleep(1.5)
+  }
+
+  assign(paste(airline, ".SkyTraxFull", sep = ""), Airline.SkyTraxFull)
+}
+```
+
+## Scraping multiple airlines
+
+```{r}
+#| label: scrape-multiple-airlines
+
+if (has_review_data) {
+  message("Using saved review data from the local dataset cache. Skipping multi-airline scraping loop.")
+} else {
+  Airline.SkyTraxFull <- data.frame()
+  airline <- c("turkish-airlines", "lufthansa", "qatar-airways", "singapore-airlines", "british-airways")
+  airname <- c("THY", "Lufthansa", "Qatar", "Singapore", "BritishAirways")
+  airnum <- length(airline)
+  air <- 1
+
+  while (air <= airnum) {
+    Airline.SkyTraxFull <- data.frame()
+    airline2 <- paste0(airline[air], "/page/", sep = "")
+    page <- 1
+    endpage <- 15
+
+    link1 <- paste0("https://www.airlinequality.com/airline-reviews/", airline2, sep = "")
+
+    while (page < endpage) {
+      link <- paste0(link1, page, "/?sortby=post_date%3ADesc&pagesize=100", sep = "")
+      page_html <- safe_read_html(link)
+
+      if (is.null(page_html)) {
+        message(sprintf("Skipping %s page %s after repeated connection failures.", airline[air], page))
+        page <- page + 1
+        next
+      }
+
+      review_tiles <- page_html %>% html_nodes(".comp_media-review-rated")
+      review_articles <- page_html %>%
+        html_nodes(".querylist") %>%
+        html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]")
+
+      Review.Title.Airline <- review_tiles %>%
+        html_node(".text_header") %>%
+        html_text() %>%
+        unlist()
+
+      Review.Text.Airline <- review_tiles %>%
+        html_node(".text_content") %>%
+        html_text() %>%
+        unlist()
+
+      Rating.Airline <- review_tiles %>%
+        html_nodes(".rating-10") %>%
+        html_node("span:nth-child(1)") %>%
+        html_text() %>%
+        unlist()
+
+      Seattype.Airline <- review_articles %>%
+        html_node(".cabin_flown+ .review-value") %>%
+        html_text() %>%
+        unlist()
+
+      Aircraft.Airline <- review_articles %>%
+        html_node(".aircraft+ .review-value") %>%
+        html_text() %>%
+        unlist()
+
+      Route.Airline <- review_articles %>%
+        html_node(".route+ .review-value") %>%
+        html_text() %>%
+        unlist()
+
+      Airline.Skytrax <- data.frame(
+        Review.Title.Airline = Review.Title.Airline,
+        Review.Text.Airline = Review.Text.Airline,
+        Rating.Airline = Rating.Airline,
+        Seat.Type.Airline = Seattype.Airline,
+        Airline.Aircaft = Aircraft.Airline,
+        Route.Airline = Route.Airline
+      )
+
+      Airline.SkyTraxFull <- rbind(Airline.SkyTraxFull, Airline.Skytrax)
+      page <- page + 1
+      Sys.sleep(1.5)
+    }
+
+    AirlineSkytrax.BC <- Airline.SkyTraxFull %>% filter(Seat.Type.Airline == "Business Class")
+    AirlineSkytrax.BC$Rating.Airline <- as.numeric(AirlineSkytrax.BC$Rating.Airline)
+    AirlineSkytrax.BC.Satisfied <- AirlineSkytrax.BC %>% filter(Rating.Airline > 8)
+    AirlineSkytrax.BC.Dissatisfied <- AirlineSkytrax.BC %>% filter(Rating.Airline < 7)
+
+    assign(paste(airname[air], ".SkyTraxFull", sep = ""), Airline.SkyTraxFull)
+    assign(paste(airname[air], ".BusinessClass", sep = ""), AirlineSkytrax.BC)
+    assign(paste(airname[air], ".BC.Satisfied", sep = ""), AirlineSkytrax.BC.Satisfied)
+    assign(paste(airname[air], ".BC.Dissatisfied", sep = ""), AirlineSkytrax.BC.Dissatisfied)
+
+    air <- air + 1
+  }
+
+  has_review_data <- TRUE
+  save_review_cache()
+  save.image("class-part.RData")
+}
+```
+
+# Text Analysis
+
+## Filtering to business-class reviews
+
+```{r}
+#| label: ta-filter-business-class
+
+if (!has_review_data) {
+  message("No local review dataset cache found. Run the scraping workflow once and re-render to populate this section.")
+} else {
+  Emirates.BusinessClass <- emirates.SkyTraxFull %>%
+    filter(Seat.Type.Airline == "Business Class")
+
+  Emirates.BusinessClass$Rating.Airline <- as.numeric(Emirates.BusinessClass$Rating.Airline)
+  Emirates.BC.Satisfied <- Emirates.BusinessClass %>% filter(Rating.Airline > 8)
+  Emirates.BC.Dissatisfied <- Emirates.BusinessClass %>% filter(Rating.Airline < 7)
+}
+```
+
+## Comparing satisfaction rates across airlines
+
+```{r}
+#| label: ta-satisfaction-rates
+
+if (!has_review_data) {
+  message("No local review dataset cache found. Satisfaction-rate calculations are skipped.")
+} else {
+  Airlines <- c("Emirates", "Qatar", "Singapore", "Lufthansa", "British Airways", "Turkish Airlines")
+
+  Number.Reviews <- c(
+    nrow(Emirates.BusinessClass),
+    nrow(Qatar.BusinessClass),
+    nrow(Singapore.BusinessClass),
+    nrow(Lufthansa.BusinessClass),
+    nrow(BritishAirways.BusinessClass),
+    nrow(THY.BusinessClass)
+  )
+
+  Number.Dissatisfied <- c(
+    nrow(Emirates.BC.Dissatisfied),
+    nrow(Qatar.BC.Dissatisfied),
+    nrow(Singapore.BC.Dissatisfied),
+    nrow(Lufthansa.BC.Dissatisfied),
+    nrow(BritishAirways.BC.Dissatisfied),
+    nrow(THY.BC.Dissatisfied)
+  )
+
+  Satisfaction.Rates <- data_frame(
+    Airline = Airlines,
+    N_Reviews = Number.Reviews,
+    N_Dissatisfied = Number.Dissatisfied
+  )
+
+  Satisfaction.Rates <- Satisfaction.Rates %>%
+    mutate(N_Satisfied = N_Reviews - N_Dissatisfied) %>%
+    mutate(
+      Share_Satisfied = N_Satisfied / N_Reviews,
+      Share_Dissatisfied = N_Dissatisfied / N_Reviews
+    )
+
+  glimpse(Satisfaction.Rates)
+}
+```
+
+```{r}
+#| label: ta-plot-dissatisfied-share
+
+if (!has_review_data) {
+  plot.new()
+  text(0.5, 0.5, "Load the local review dataset cache to render this chart")
+} else {
+  ggplot(Satisfaction.Rates, aes(x = reorder(Airline, Share_Dissatisfied), y = Share_Dissatisfied)) +
+    geom_bar(stat = "identity", position = position_stack()) +
+    labs(
+      y = "Share of Dissatisfied Users",
+      x = "Airline",
+      title = "Rate of Dissatisfied User Reviews per Airline"
+    ) +
+    ylim(0, 1)
+}
+```
+
+```{r}
+#| label: ta-plot-satisfied-share
+
+if (!has_review_data) {
+  plot.new()
+  text(0.5, 0.5, "Load the local review dataset cache to render this chart")
+} else {
+  ggplot(Satisfaction.Rates, aes(x = reorder(Airline, Share_Dissatisfied), y = Share_Satisfied)) +
+    geom_bar(stat = "identity", position = position_stack()) +
+    labs(
+      y = "Share of Satisfied Users",
+      x = "Airline",
+      title = "Rate of Satisfied User Reviews per Airline"
+    ) +
+    ylim(0, 1)
+}
+```
+
+## Bigram analysis of satisfied and dissatisfied customers
+
+```{r}
+#| label: ta-bigram-wordclouds
+
+if (!has_review_data) {
+  plot.new()
+  text(0.5, 0.5, "Load the local review dataset cache to render the text-analysis word clouds")
+} else {
+  data("stop_words")
+  pal <- brewer.pal(8, "Dark2")
+
+  tidy_keywords.Qatar <- Qatar.BC.Satisfied %>%
+    unnest_tokens(word, Review.Text.Airline) %>%
+    count(word)
+
+  tidy_keywords.Qatar %>%
+    with(safe_wordcloud(word, n, min.freq = 15, max.words = 30, random.order = FALSE))
+
+  Qatar.BC.Satisfied %>%
+    unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+    separate(word, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word, !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE) %>%
+    unite(bigram, word1, word2, sep = " ") %>%
+    with(safe_wordcloud(bigram, n, min.freq = 15, max.words = 30, random.order = FALSE, colors = pal))
+
+  Singapore.BC.Satisfied %>%
+    unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+    separate(word, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word, !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE) %>%
+    unite(bigram, word1, word2, sep = " ") %>%
+    with(safe_wordcloud(bigram, n, min.freq = 5, max.words = 30, random.order = FALSE, colors = pal))
+
+  THY.BC.Dissatisfied %>%
+    unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+    separate(word, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word, !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE) %>%
+    unite(bigram, word1, word2, sep = " ") %>%
+    with(safe_wordcloud(bigram, n, min.freq = 5, max.words = 30, random.order = FALSE, colors = pal))
+
+  BritishAirways.BC.Dissatisfied %>%
+    unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+    separate(word, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word, !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE) %>%
+    unite(bigram, word1, word2, sep = " ") %>%
+    with(safe_wordcloud(bigram, n, min.freq = 5, max.words = 30, random.order = FALSE, colors = pal))
+}
+```
+
+## Route analysis for dissatisfied passengers
+
+```{r}
+#| label: ta-route-analysis
+
+if (!has_review_data) {
+  message("No local review dataset cache found. Route analysis is skipped.")
+} else {
+  Dis.routes.THY <- THY.BC.Dissatisfied %>%
+    group_by(Route.Airline) %>%
+    summarise(Number = n(), Airline = "THY") %>%
+    filter(Number > 2) %>%
+    drop_na()
+
+  Dis.routes.BA <- BritishAirways.BC.Dissatisfied %>%
+    group_by(Route.Airline) %>%
+    summarise(Number = n(), Airline = "B.A.") %>%
+    filter(Number > 2) %>%
+    drop_na()
+
+  glimpse(Dis.routes.THY)
+  glimpse(Dis.routes.BA)
+}
+```
+
+```{r}
+#| label: ta-route-plot-ba
+
+if (!has_review_data) {
+  plot.new()
+  text(0.5, 0.5, "Load the local review dataset cache to render this route plot")
+} else {
+  ggplot(Dis.routes.BA, aes(x = reorder(Route.Airline, -Number), y = Number)) +
+    geom_bar(stat = "identity", position = position_stack()) +
+    labs(
+      y = "N",
+      x = "Route",
+      title = "Number of Times a Route Is Mentioned in a Negative Review"
+    ) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+# Saving and Loading Files
+
+Saving the workspace is useful because the web-scraping section can take a long time to complete. Once the data has been collected, it can be reloaded later instead of scraped again.
+
+```{r}
+#| eval: false
+#| label: save-load-files
+
+save.image("class-part.RData")
+load("class-part.RData")
+
+saveRDS(mget(ls(pattern = "BusinessClass|BC\\.|SkyTrax"), inherits = TRUE), "data-cache/review-datasets.rds")
+review_objects <- readRDS("data-cache/review-datasets.rds")
+list2env(review_objects, envir = .GlobalEnv)
+
+readr::write_csv(extract_interest_over_time(web.trends.businessclass), "data-cache/google-trends-reference.csv")
+readr::write_csv(extract_interest_over_time(web.trends.businessclass2), "data-cache/google-trends-comparison.csv")
+readr::write_csv(webtrends.total, "data-cache/google-trends-related-queries.csv")
+```
+
+::: {.callout-tip}
+## Suggested workflow
+Run the scraping and Google Trends code once and let the document save local cache files in [data-cache](C:/Users/ceren/OneDrive/Belgeler/GitHub/user-generated-data/data-cache). In future sessions, the setup chunk will load the cached review dataset and cached Google Trends CSV files first, so the notebook can render without repeating the slow scraping step.
+:::
+
+# Tasks
+
+## Task 1: Problem Summary
+
+**Prompt**: Summarize the problem Leviev Air faces.
+
+Leviev Air faces a positioning problem rather than a simple awareness problem. The airline already knows its target market, namely business-class travellers in the UK, but it does not yet know which concrete service attributes, route opportunities, and communication themes will persuade those travellers to switch away from established airlines. Because the company lacks the budget for large-scale survey research, it must rely on user-generated data to infer what customers search for, what they compare, what they praise, and what they complain about.
+
+## Task 2: Google Trends Re-Specification
+
+**Prompt**: Google Trends analysis using the same code did not yield enough results to visualize the texts users provided in their searches. Rerun the series of analysis by changing the time frame to get more data for the `related_queries` field. Experiment with a different time frame such as `all` or another supported setting.
+
+The notebook was updated to broaden the Google Trends time window to `time = "all"` in both `gtrends()` requests. That change is technically appropriate for the assignment because a longer historical window should increase the chance of getting richer `related_queries` output.
+
+
+## Task 3: Interpreting the Google Trends Word Clouds
+
+**Prompt**: If you successfully pulled enough data that returns a Word Cloud result, interpret the Word Cloud for each of the nine airlines. Refer to the positioning questions and explain what each airline may reveal.
+
+
+- British Airways: `business class`, `customer service`
+- Turkish Airlines: `business class`, `customer service`
+- Singapore Airlines: `business class`, `cabin crew`
+- Qatar: `business class`, `cabin crew`
+
+These phrases are directionally useful, but they are not rich enough to support a strong airline-by-airline positioning story on their own. 
+
+## Task 4: Positioning Analysis from Web-Scraped Reviews
+
+**Prompt**: By webscraping customer reviews of six airlines and splitting reviews into satisfied and dissatisfied customers, identify the strongest and weakest performers and answer the positioning questions below.
+
+### Which airlines do potential customers in the UK frequently use?
+
+Based on the saved business-class review counts in `class-part.RData`, the most visible airlines in this dataset are Emirates (`625` business-class reviews), Qatar (`489`), British Airways (`463`), Singapore Airlines (`352`), Lufthansa (`296`), and Turkish Airlines (`271`). That does not prove market share, but it does show that these are the main carriers appearing in the observed premium-travel discussion and review pool.
+
+### Which alternatives do potential customers seek?
+
+The saved dataset suggests that customers compare multiple types of premium alternatives rather than staying within one narrow airline category. The core alternatives in this project are:
+
+- Gulf carriers: Emirates and Qatar
+- Asian premium carrier: Singapore Airlines
+- European network carriers: Lufthansa and British Airways
+- bridge carrier with hub-based connectivity: Turkish Airlines
+
+This indicates that business travellers compare not just local incumbents, but also long-haul connecting carriers that promise better service or better value.
+
+### Which general pain points do customers see with existing airlines?
+
+The real review text points to several recurring pain points. In the dissatisfied bigrams, the most prominent complaint themes are:
+
+- `customer service`
+- `middle seat`
+- `class seat` / `class seats`
+- `connecting flight`
+- `istanbul airport`
+- `ground staff`
+- `club world` / `club europe`
+
+These patterns suggest that the broad problems are inconsistent service, poor seat quality relative to expectations, airport or transfer friction, and a mismatch between premium pricing and the actual delivered experience.
+
+### Which common problems occur for which competitor?
+
+The real data shows clear differences by airline:
+
+- British Airways dissatisfied reviews are dominated by `customer service`, `club europe`, `club world`, `middle seat`, `class seats`, and `connecting flight`. This points to product inconsistency and frustration with the actual business-class seat or short-haul premium experience.
+- Turkish Airlines dissatisfied reviews are dominated by `customer service`, `istanbul airport`, `ground staff`, and `connecting flight`. This points to transfer friction and airport-process issues around the Istanbul hub.
+- Lufthansa dissatisfied reviews heavily feature `customer service`, `middle seat`, `class seats`, `connecting flight`, and even `lie flat` in complaint contexts. That suggests seat/product disappointment and weak service execution.
+- Qatar and Singapore Airlines appear on the positive side instead. Qatar satisfied reviews contain `excellent service`, `cabin crew`, `flight attendants`, and `al mourjan`. Singapore satisfied reviews contain `cabin crew`, `lie flat`, `bed mode`, `entertainment system`, and `kris lounge`.
+
+### Which positive factors do potential customers rely on when choosing an airline?
+
+The strongest positive themes in the saved review data are:
+
+- service quality: `excellent service`, `cabin crew`, `flight attendants`
+- seat comfort: `lie flat`, `bed mode`, `class seat`
+- ground experience: `al mourjan`, `kris lounge`
+- overall premium execution: calm, comfort, attentive staff, and a complete premium product
+
+In short, travellers appear to choose airlines not only for routes, but for a combination of seat quality, service consistency, and high-quality airport/lounge experience.
+
+### Which factors need to be satisfied when looking for an airline?
+
+The review data implies a minimum threshold for business-class acceptance:
+
+- the seat must feel genuinely premium
+- the airline must deliver reliable and responsive customer service
+- airport and connection handling must be smooth
+- the experience must justify the business-class fare
+
+When those basics fail, dissatisfaction increases sharply. In the saved results, the highest dissatisfied shares are Turkish Airlines (`68.6%`), Lufthansa (`68.6%`), and British Airways (`62.9%`), which reinforces how important those fundamentals are.
+
+### Which factors should Leviev Air emphasize when trying to convince business customers to switch from established airlines to their new service?
+
+Leviev Air should emphasize precisely the issues that the dissatisfied reviews say incumbents fail to deliver:
+
+- dependable customer service
+- a genuinely comfortable business-class seat
+- a frictionless airport and boarding experience
+- fewer connection and transfer headaches
+- a more private and calm premium cabin
+
+This is especially important because the strongest positive airlines in the saved data, Qatar and Singapore, already win on service and comfort. Leviev Air therefore needs to compete on a sharper version of premium convenience and consistency.
+
+### Can Leviev Air be given a confident positioning recommendation?
+
+Yes, with one limitation: the recommendation can be made confidently from the saved review data, but not from a complete live Google Trends run. On the review side, the signal is strong. The top satisfied airlines in the saved data are Qatar (`51.3%` satisfied) and Singapore (`46.0%` satisfied). The weakest performers by dissatisfied share are Turkish Airlines (`68.6%` dissatisfied), Lufthansa (`68.6%`), and British Airways (`62.9%`), while Emirates sits in the middle (`44.8%` dissatisfied, `34.4%` satisfied).
+
+That pattern supports a clear recommendation: business travellers reward premium service and comfort when it is delivered consistently, and they punish inconsistency, poor service handling, weak seating, and airport friction.
+
+::: {.callout-important}
+## Recommended Positioning Strategy
+Leviev Air should position itself as the business-class alternative that removes friction from premium travel. The most defensible positioning from the saved data is: superior service consistency, better comfort for work and rest, and a smoother end-to-end journey than legacy competitors with frequent complaints about customer service, seat quality, and connection handling.
+:::
+
+### Final Recommendation
+
+For business-class travellers, Leviev Air should compete on premium efficiency and reliability rather than only on luxury imagery. Its positioning should highlight:
+
+- a smoother airport and boarding experience
+- superior privacy and calmness
+- dependable business-class service with less inconsistency
+- high comfort for work and rest
+- selective route targeting where incumbent airlines generate visible dissatisfaction, especially where British Airways and Turkish Airlines produce repeated negative reviews
+
+That is a clearer and more defensible positioning strategy than simply claiming to be "better service" in general terms.

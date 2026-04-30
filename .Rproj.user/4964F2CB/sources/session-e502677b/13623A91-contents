@@ -1,0 +1,227 @@
+---
+title: "Arrow"
+author: "Ceren Unal"
+date: today
+format: 
+    html:
+        toc: true
+        toc-depth: 3
+        toc-location: right-body
+        embed-resources: true
+execute:
+    freeze: auto
+---
+
+#Load Data and Packages
+
+```{r}
+# install.packages("arrow")
+library(arrow)
+library(tidyverse)
+# later
+library(dbplyr)
+library(duckdb)
+```
+
+
+```{r}
+#| eval: false
+#dir.create("data", showWarnings = FALSE)
+
+#curl::multi_download(
+#  "https://r4ds.s3.us-west-2.amazonaws.com/seattle-library-#checkouts.csv",
+#  "data/seattle-library-checkouts.csv", # almost 9GB size when saved
+#  resume = TRUE
+#)
+```
+
+```{r}
+seattle_csv <- open_dataset(
+  sources = "data/seattle-library-checkouts.csv",
+  col_types = schema(ISBN = string()),
+  format = "csv"
+)
+
+```
+
+```{r}
+seattle_csv
+
+glimpse(seattle_csv)
+```
+
+```{r}
+seattle_csv |>
+  group_by(CheckoutYear) |>
+  summarize(checkouts = sum(Checkouts)) |>
+  arrange(CheckoutYear) |>
+  collect()
+
+```
+
+**\## Advantages of parquet**\
+\| Comparison Dimensions \| CSV \| Parquet \|\
+\|---------------------\|-------------------------\|---------------------------\|\
+\| File size \| Larger \| Smaller, compressed \|\
+\| Speed \| Slower \| Faster \|\
+\| Ability to identify file type \| No information \| Has a rich type system about column \|\
+\| Organization \| Row-oriented \| Column-oriented \|\
+\| Operation \| Not Chunked \| Chunked \|\
+\| Readerable? - readr::read_file() \| Readeable to humans \| Unreadeable to humans \|
+
+```{r}
+pq_path <- "data/seattle-library-checkouts"
+```
+
+```{r}
+seattle_csv |>
+  group_by(CheckoutYear) |>
+  write_dataset(path = pq_path, format = "parquet")
+```
+
+```{r}
+tibble(
+  files = list.files(pq_path, recursive = TRUE),
+  size_MB = file.size(file.path(pq_path, files)) / 1024^2
+)
+tibble(
+  files = list.files(pq_path, recursive = TRUE),
+  size_MB = file.size(file.path(pq_path, files)) / 1024^2
+) |>
+  summarize(total_size = sum(size_MB))
+```
+
+```{r}
+# Using parquet data with `dplyr` and `arrow`
+## Reading the data in
+seattle_pq <- open_dataset(pq_path) # directory only
+```
+
+```{r}
+#| eval: false
+seattle_pq |>
+  select(CheckoutYear, CheckoutMonth, MaterialType, Checkouts) |>
+  group_by(CheckoutYear) |>
+  collect()
+seattle_pq |>
+  count(CheckoutYear, CheckoutMonth, Checkouts) |>
+  mutate(Total_checkouts = sum(Checkouts)) |>
+  arrange(CheckoutYear, CheckoutMonth, Checkouts) |>
+  collect()
+```
+
+```{r}
+query <- seattle_pq |>
+  filter(CheckoutYear >= 2018, MaterialType == "BOOK") |>
+  group_by(CheckoutYear, CheckoutMonth) |>
+  summarize(TotalCheckouts = sum(Checkouts)) |>
+  arrange(CheckoutYear, CheckoutMonth)
+```
+
+**Mechnics**: you write dplyr code, which is automatically transformed into a query that the Apache Arrow C++ library understands, which is then executed when you call collect()
+
+```{r}
+# Task: how long does it take to calculate the number of books checked out in each month of 2021
+seattle_csv |>
+  filter(CheckoutYear == 2021, MaterialType == "BOOK") |>
+  group_by(CheckoutMonth) |>
+  summarize(TotalCheckouts = sum(Checkouts)) |>
+  arrange(desc(CheckoutMonth)) |>
+  collect() |>
+  system.time()
+```
+
+## Questions
+
+> Figure out the most popular book each year.
+
+Top books are listed below. However, there seems to be some missing data in the dataset, where titles aren't available for some books. This may be misleading if rows with missing title are being aggregated for each year.
+
+```{r}
+  book_year_totals <- seattle_pq |>
+    filter(!is.na(CheckoutYear), !is.na(Title)) |>
+    group_by(CheckoutYear, Title) |>
+    summarize(total_checkouts = sum(Checkouts, na.rm = TRUE), .groups = "drop")
+
+  year_max <- book_year_totals |>
+    group_by(CheckoutYear) |>
+    summarize(max_checkouts = max(total_checkouts, na.rm = TRUE), .groups = "drop")
+
+  most_popular_by_year <- book_year_totals |>
+    inner_join(year_max, by = "CheckoutYear") |>
+    filter(total_checkouts == max_checkouts) |>
+    arrange(CheckoutYear, desc(total_checkouts), Title) |>
+    collect()
+
+  most_popular_by_year
+```
+
+> Which author has the most books in the Seattle library system?
+
+James Patterson (1947-) is the top author and has 422 books in the system. There are also many books missing values in the Creator column, however, among authored books Patterson takes the lead.
+
+```{r}
+
+
+ author_book_counts <- seattle_pq |>
+    filter(
+      MaterialType == "BOOK",
+      !is.na(Creator),
+      Creator != "",
+      !is.na(Title),
+      Title != ""
+    ) |>
+    group_by(Creator) |>
+    summarize(num_books = n_distinct(Title), .groups = "drop")
+
+  max_count <- author_book_counts |>
+    summarize(num_books = max(num_books, na.rm = TRUE), .groups = "drop")
+
+  top_authors <- author_book_counts |>
+    inner_join(max_count, by = "num_books") |>
+    arrange(desc(num_books), Creator) |>
+    collect()
+
+  top_authors
+```
+
+> How have checkouts of books vs ebooks changed over the last 10 years?
+
+Checkouts fell drastically in 2020, likely due to COVID-19 measures. Fallowing the pandemic era, book checkouts don't seem to have recovered. E-books on the other hand, demonstrate a steady rise in demand.
+
+```{r}
+ # 1) Find latest year in data
+  latest_year <- seattle_pq |>
+    summarize(max_year = max(CheckoutYear, na.rm = TRUE)) |>
+    collect() |>
+    pull(max_year)
+
+  start_year <- latest_year - 9
+
+  # 2) Aggregate BOOK vs EBOOK over last 10 years
+  book_ebook_trend <- seattle_pq |>
+    filter(
+      CheckoutYear >= start_year,
+      CheckoutYear <= latest_year,
+      MaterialType %in% c("BOOK", "EBOOK")
+    ) |>
+    group_by(CheckoutYear, MaterialType) |>
+    summarize(total_checkouts = sum(Checkouts, na.rm = TRUE), .groups = "drop") |>
+    arrange(CheckoutYear, MaterialType) |>
+    collect()
+
+  book_ebook_trend
+
+  # 3) Visualize change over time
+  ggplot(book_ebook_trend, aes(x = CheckoutYear, y = total_checkouts, color = MaterialType)) +
+    geom_line(linewidth = 1.1) +
+    geom_point(size = 2) +
+    scale_x_continuous(breaks = seq(start_year, latest_year, by = 1)) +
+    labs(
+      title = "Seattle Library Checkouts: BOOK vs EBOOK (Last 10 Years)",
+      x = "Year",
+      y = "Total Checkouts",
+      color = "Material Type"
+    ) +
+    theme_minimal()
+```

@@ -1,0 +1,65 @@
+---
+title: "Project Proposal"
+author: "Ceren Unal"
+date: today
+format: 
+    html:
+        toc: true
+        toc-depth: 3
+        toc-location: right-body
+        embed-resources: true
+execute:
+    freeze: auto
+---
+
+## Portfolio Website Project Proposal:
+
+### Contents
+
+1.  **Home Page**
+
+    -   Self-Introduction
+
+2.  **Digital Marketing Projects page** (Note: this page should be composed of multiple projects)
+
+    -   Article: Current Trends in Answer Engine Optimization (AEO)
+
+    -   Article: Current Trends in Marketing Research with Digital Twins
+
+3.  **Marketing Analytics Page\*** (Note: this page should be composed of multiple projects)
+
+    -   Article: Churn Prediction Model on Telecomm Data
+
+    -   Article: Cluster Analysis on Retail Data
+
+    -   Article: Campaign Sales Analysis with Differences-in-Differences
+
+    -   Reveajs Presentation page\*\* (Note: You may choose an appropriate title)
+
+        -   MSDM Culminating Experience Project Presentation
+
+        -   <div>
+
+            -   **Project: Predicting Chatbot Service Quality Using LLMs**
+
+            -   Data and source
+
+            -   Managerial problems motivating the project
+
+            -   Targeted audience for the project (e.g., CEO of the company)
+
+            -   Research questions/objectives
+
+            -   Expected impact of the project on the business
+
+            -   Methods to be used (Use quantitative methods you learned in this or other courses you took so far)
+
+            </div>
+
+    -   Article: Setting Up GA4
+
+        -   Analytics Page about the website’s traffic data collected in GA4
+
+4.  **Resume**
+
+    -   Upload current resume

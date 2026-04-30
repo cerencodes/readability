@@ -1,0 +1,736 @@
+---
+title: "User Generated Data Analytics"
+subtitle: "Case Study: Leviev Air"
+format: html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***
+<center>
+![](Pictures/levievair.png){width=120}
+</center>
+***
+
+Leviev Air is a recently founded private airline from the UK. The airline intends to offer private business trips with its recently acquired fleet of 50 private jets. It targets business professionals and intends to win customers from the established airline market by offering a better service experience for business class travellers while offering a similar or only slightly higher price level.
+
+The investor pitch went well, and the company was able to not only acquire sufficient funding but also adequate jets. Still, the company board struggles with Leviev Air’s positioning in the market. While the targeted segment of business professionals is clear, it remains largely unclear how to attract these high profile customers and how to make business class travellers switch from established airlines to Leviev Air.
+
+To decide on, which values to provide to potential clients and to understand which benefits to communicate to Leviev Air’s potential customer base, the executive board asks you to conduct a thorough market research. The executives want to especially learn which factors business travellers pay attention to and which factors business travellers dislike most with the leading airlines in the field. Unfortunately, Leviev’s initial business plan missed to include a budget for a commercial market research company. Thus, running costly surveys or focus group interviews will not be feasible.
+
+The next day you pull together a checklist to develop substantial business intelligence in the area. By answering the following points with the help of UGC you try to narrow down the positioning strategy for Leviev Air. 
+
+* Which airlines do potential customers in the UK frequently use? 
+* Which alternatives do potential customers seek for?
+* Which general pain points to customers see with existing airlines?
+* Which common problems do occur for which competitor?
+* Which positive factors do potential customers rely on when choosing an airline?
+* Which factors need to be satisfied when looking for an airline?
+* Which factors which Leviev Air emphasize when trying to convince business customers to switch from established airlines to their new service?
+
+---
+
+### Google Trends Analysis 
+
+To get a better understanding of passenger's online search behaviour we will investigate google trends. To access Google's API we need to activate the gTrendsR package. In addition we will load the common packages, which we need for data handling (tidyverse) and data visualization (ggplot)
+We first the initial packages with the following command. 
+
+```{r eval=TRUE, echo=TRUE}
+library(tidyverse)
+library(gtrendsR)
+```
+
+With the help of the gTrendsR package we can now check which business class airlines are most popular and compare search volume over time for the business class airlines we are interested in. To do so, we use the following code:
+
+```{r eval=FALSE, echo=TRUE}
+web.trends.businessclass = gtrends(c("Emirates Business Class", 
+                                     "British Airways Business Class", 
+                                     "Lufthansa Business Class",
+                                     "Air France Business Class",
+                                     "Turkish Airlines Business Class"), 
+                                   gprop = "web", geo="GB", 
+                                   time = "2017-03-05 2022-01-01"))
+
+```
+
+The code allows us accessing Google Trends’ App Programing Interface (API) and to get the search result data stored in the web.trends.businessclass data frame. The gtrends function from the package requires the same input than the web interface. We specify the search requests we are interested in, the type of Google Search we are looking for (here we look for web search, alternatively we could also rely on news, images, and youtube searches to access the search results from these categories), the country for which we search (here indicated by UK) and the time frame for which we want results. 
+
+To replicate the plot we also see on Google Trends own webpage, we can simply ask R to plot the dataframe with the Google Trends data. 
+
+```{r eval=FALSE, echo=TRUE}
+plot(web.trends.businessclass)
+```
+
+![](Chapter-6-UGC-Analytics-extracted/img02.png){width=672}
+
+<br/>
+
+---
+
+**Question**: What does the graph tell you? What can we learn from the development of the time series? Which events do you recognize?
+
+---
+
+A quick inspection of the plot shows that we replicated with R the plot we usually obtain from Google’s web interface. On a second look you my discover that the Y-axis does not display the number of web searches. Instead, it ranges from 0 to 100. 
+
+This is because Google trends only provides us with relative search results by indexing the day with the highest search volume as 100. Consequently, all other days are reported as a relative measure to the day with the highest volume. In case we have multiple search terms – as in our example – the 100 will be set for the keyword with the highest search volume. 
+
+In fact, this means, that we can not compare search volume data from different search terms, if we extract them separately. However, there is an easy work around. We may simply control, which search term enjoys the highest interest and include this term in all searches as a reference. So, we ensure that all data we obtain from Google Trends is relative to this search term and we can thus compare results across different searches. This is especially helpful, as Google Trends only allows us to compare up to 5 search terms per call. 
+
+Lets assume we also want to have search results for other Airlines such as KLM, United, Singapore Airlines, and SAS. If we would simply look for these four airlines, Google would index the 100 to the search term with the most interest in this call. To make the results comparable we simply include Emirates in our search, as this is the airline that apparently enjoys most interest and will thus serve for both calls as reference mark. We can extract this data with the following command and then plot the new time series.
+
+```{r eval=FALSE, echo=TRUE}
+web.trends.businessclass2 = gtrends(c("Emirates Business Class", 
+                                      "KLM Business Class",
+                                      "Singapore Airlines Business Class", 
+                                      "United Airlines Business Class",
+                                      "SAS Business Class"), 
+                                    gprop = "web", geo="GB", 
+                                    time = "2017-03-05 2022-01-01")
+
+plot(web.trends.businessclass2, width = 1080, height = 600)
+```
+
+![](Chapter-6-UGC-Analytics-extracted/img03.png){width=672}
+
+Using the summary() function you can inspect the two objects in your environment and will see that they consist of different lists and elements. 
+
+```{r eval=FALSE, echo=TRUE}
+summary(web.trends.businessclass)
+summary(web.trends.businessclass2)
+```
+
+```text
+##                     Length Class      Mode
+## interest_over_time  7      data.frame list
+## interest_by_country 0      -none-     NULL
+## interest_by_region  5      data.frame list
+## interest_by_dma     0      -none-     NULL
+## interest_by_city    5      data.frame list
+## related_topics      0      -none-     NULL
+## related_queries     6      data.frame list
+##
+##                     Length Class      Mode
+## interest_over_time  7      data.frame list
+## interest_by_country 0      -none-     NULL
+## interest_by_region  5      data.frame list
+## interest_by_dma     0      -none-     NULL
+## interest_by_city    5      data.frame list
+## related_topics      0      -none-     NULL
+## related_queries     6      data.frame list
+```
+
+We can see that both objects consist of the multiple data frames, which consist the information we usually obtain from the different windows within the Google Trends webpage.
+
+Lets first have a look at the other search terms. We create a new dataframe and store the other search terms in it with the following code. We then combine the two frames. To avoid that we have two times "Emirates Business Class" results, we also filter it out before joining the two frames.
+
+
+```{r eval=FALSE, echo=TRUE}
+webtrends1 = web.trends.businessclass[["related_queries"]]
+webtrends2 = web.trends.businessclass2[["related_queries"]]
+webtrends2.filtered = webtrends2 %>% filter(keyword != "Emirates Business Class")
+webtrends.total = rbind(webtrends1, webtrends2.filtered)
+glimpse(webtrends.total)
+```
+
+```text
+## Rows: 276
+## Columns: 6
+## $ subject         <chr> "100", "100", "100", "56", "49", "49", "49", "37", "37"...
+## $ related_queries <chr> "top", "top", "top", "top", "top", "top", "top", "top"...
+## $ value           <chr> "emirates a380", "a380 business class", "a380", "dubai"...
+## $ geo             <chr> "GB", "GB", "GB", "GB", "GB", "GB", "GB", "GB", "GB", ...
+## $ keyword         <chr> "Emirates Business Class", "Emirates Business Class", ...
+```
+
+<br/>
+
+---
+
+**Question**: Inspect the dataframe webtrends.total. What kind of information might be useful for developing a positioning? What do you learn from the information about the business class market? What implications may this bring for Leviev Air? 
+
+---
+
+
+### Text Visualisations
+
+To develop a systematic understanding of which search terms of patterns are frequently used we may rely on wordclouds and try to produce a word cloud with the help of the related query keywords. 
+
+To work with textdata and to visualize text we need to rely on two more packages: tidytext and wordclouds.
+
+```{r eval=TRUE, echo=TRUE}
+library(wordcloud)
+library(tidytext)
+```
+
+We can now start with preparing the search query data. Tidytext's unnest_tokens function helps us to split the search queries in the value column of the webtrends.total dataframe into single observations. By doing so we can then count how many times a querry is posted and use this information to then produce a wordcloud that includes all search queries which have been at least 3 times used.  
+
+
+```{r eval=FALSE, echo=TRUE}
+tidy_keywords <- webtrends.total %>%
+  unnest_tokens(word, value)
+
+tidy_keywords %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+```
+
+![](Chapter-6-UGC-Analytics-extracted/img04.png){width=672}
+
+---
+
+**Question**: What kind of additional information does the word cloud provide? How does this information deviates from your previous inspection? What can we take away from the frequencies?
+
+---
+
+To understand which airlines are considered and compared together, we can investigate which airlines are often  searched with other. This may point us towards different passenger types, which may then ultimately help us to derive implications for Leviev Air. To come to this point we use dplyr’s filter function to create separate dataframes for each airline, containing only the airline specific queries. We can then plot these as separate wordclouds with the following code. 
+
+```{r eval=FALSE, echo=TRUE}
+Emirates.Queries = webtrends.total %>% filter(keyword == "Emirates Business Class")
+tidy_keywords.Emirates <- Emirates.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+BritishAirways.Queries = webtrends.total %>% filter(keyword == "British Airways Business Class")
+tidy_keywords.British <- BritishAirways.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+Lufthansa.Queries = webtrends.total %>% filter(keyword == "Lufthansa Business Class")
+tidy_keywords.Lufthansa <- Lufthansa.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+AirFrance.Queries = webtrends.total %>% filter(keyword == "Air France Business Class")
+tidy_keywords.AirFrance <- AirFrance.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+Turkish.Queries = webtrends.total %>% filter(keyword == "Turkish Airlines Business Class")
+tidy_keywords.Turkish <- Turkish.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+KLM.Queries = webtrends.total %>% filter(keyword == "KLM Business Class")
+tidy_keywords.KLM <- KLM.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+Singapore.Queries = webtrends.total %>% filter(keyword ==  "Singapore Airlines Business Class")
+tidy_keywords.Singapore<- Singapore.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+United.Queries = webtrends.total %>% filter(keyword ==  "United Airlines Business Class")
+tidy_keywords.United <- United.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+SAS.Queries = webtrends.total %>% filter(keyword ==  "SAS Business Class")
+tidy_keywords.SAS <- SAS.Queries %>%
+  unnest_tokens(word, value) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 3, max.words = 90))
+
+```
+
+Emirates
+
+![](Chapter-6-UGC-Analytics-extracted/img05.png){width=672}
+
+British Airways
+
+![](Chapter-6-UGC-Analytics-extracted/img06.png){width=672}
+
+Lufthansa
+
+![](Chapter-6-UGC-Analytics-extracted/img07.png){width=672}
+
+Air France
+
+![](Chapter-6-UGC-Analytics-extracted/img08.png){width=672}
+
+Turkish Airlines
+
+![](Chapter-6-UGC-Analytics-extracted/img09.png){width=672}
+
+KLM
+
+![](Chapter-6-UGC-Analytics-extracted/img10.png){width=672}
+
+Singapore Airlines
+
+![](Chapter-6-UGC-Analytics-extracted/img11.png){width=672}
+
+United Airlines
+
+![](Chapter-6-UGC-Analytics-extracted/img12.png){width=672}
+
+SAS
+
+![](Chapter-6-UGC-Analytics-extracted/img13.png){width=672}
+
+---
+
+**Question**: From inspecting the related search queries of each airline, which airlines seem to share similar customers, which seem to stand out?
+
+---
+
+---
+## Webpage Crawling
+
+As we now have a clearer understanding of the consideration set of business travelers we can continue with gathering information about what customers like and dislike with the different airlines.
+
+We rely on a general airline review page: Skytrax Airline Quality. You can find the webpage under the following address: https://www.airlinequality.com.
+
+Passengers can leave reviews for specific airilines. These reviews feature a lot of interesting and valuable information covering many interesting aspects of customer experience.
+
+![](Pictures/AirlineReview.png){width = 200}
+
+---
+
+**Question**: Just browse through the webpage and check the different airlines and the corresponding reviews to develop an idea of which information is valuable and can help Leviev Air with developing a relevant and useful positioning.
+
+---
+
+To automatically extract the information from the webpage, we can develop a crawler that screens the website. Crawlers need to understand which re-occuring elements from a website you wish to extract. To identify these we need to inspect the source code of the webpage. We can do this with most web browsers. Simply mark the element you are interested in and right click on it. You will find an option which says “Show Source Code” or “Inspect Element”. If you do this for e.g. the review headline and the main review text, you will discover something like the examples shown 
+
+![](Pictures/SourceCode1.png){width = 200}
+
+![](Pictures/SourceCode2.png){width = 200}
+
+Looking at the highlighted areas in the code you will recognize that some of the text you see on the webpage is always preceded by the same code. In case of the general headline of the review we see for both examples the html code  <div class =”text_header”> in front of the written text.
+
+We can take advantage of this and tell R to go through the website code and to look up where the two tags appear in the code and to then always copy/paste for us the text that comes behind these tags. Doing so, we are able to quickly store the information in a dataframe, which we then can analyse later on.
+
+Instead of relying on your browser`s inspection tools, you may similarly rely on other plugins such as the SelectorGadget (https://selectorgadget.com). The tool is a plug in for Chrome and helps you with inspecting CSS and HTML to find the corresponding tags you need to extract data from a website. 
+
+
+We can now use this information to build our very first own crawler. Crawling with R requires us again to load another library: rVest
+
+
+
+```{r eval=TRUE, echo=TRUE}
+library(rvest)
+link = "https://www.airlinequality.com/airline-reviews/emirates/?sortby=post_date%3ADesc&pagesize=100"
+Review.Title.Emirates <- read_html(link) %>% 
+  html_nodes(".text_header") %>% 
+  html_text()
+```
+
+
+As you can see, we have now crawled all the review titles for Emirates that are available on the site. We already learned above that there are 100 reviews listed on a page at a time, however, looking at Review.Title.Emirates, we see that there are 103 lines. If we take a closer look at the text vector, we see that the .text_header element also appears in the context of the headers for the embedded ads - so not only above the reviews we are interested in. In this case, if we save all .text_header elements, we would be saving information with them that is neither needed nor otherwise useful for our further analysis. To solve the problem, we need to take another look at the structure of the website. We noticed that each review is located in a review "tile", of which there are exactly 100 on the page. So in our command, we can tell R to first find all the tiles on the page and then list only the .text_header elements that are in the tiles. So, using the SelectorGadget, we look for the name of the element that marks the tiles in the source code (.comp_media-review-rated) and include that in our code. It will look like this:
+
+```{r eval=TRUE, echo=TRUE}
+Review.Title.Emirates <- read_html(link) %>% 
+  html_nodes(".comp_media-review-rated") %>%
+  html_node (".text_header") %>%
+  html_text() %>%
+  unlist()
+```
+
+As you see, we now have 100 rows in the corresponding vector. We can now finally develop a crawler that extracts the review title, the review text, the overall airline rating, the seat category, the type of aircraft, and the route the passenger was booked on. 
+
+
+```{r eval=TRUE, echo=TRUE}
+link = "https://www.airlinequality.com/airline-reviews/emirates/page/1/?sortby=post_date%3ADesc&pagesize=100"
+
+#Title
+Review.Title.Emirates <- read_html(link) %>% 
+  html_nodes(".comp_media-review-rated") %>%
+  html_node (".text_header") %>%
+  html_text() %>%
+  unlist()
+
+##ReviewText
+Review.Text.Emirates <- read_html(link) %>% 
+  html_nodes(".comp_media-review-rated") %>%
+  html_node(".text_content") %>%
+  html_text() %>%
+  unlist()
+
+#Rating
+Rating.Emirates <- read_html(link) %>% 
+  html_nodes(".comp_media-review-rated") %>%
+  html_nodes(".rating-10") %>%
+  html_node("span:nth-child(1)") %>%
+  html_text() %>%
+  unlist()
+
+#Seat Type
+
+Seattype.Emirates <- read_html(link) %>% 
+  html_nodes(".querylist") %>%
+  html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+  html_node(".cabin_flown+ .review-value") %>%
+  html_text() %>%
+  unlist()
+
+#Aircraft Type
+Aircraft.Emirates <- read_html(link) %>% 
+  html_nodes(".querylist") %>%
+  html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+  html_node(".aircraft+ .review-value") %>%
+  html_text() %>%
+  unlist()
+
+#Route
+Route.Emirates <- read_html(link) %>% 
+  html_nodes(".querylist") %>%
+  html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+  html_node(".route+ .review-value") %>%
+  html_text() %>%
+  unlist()
+
+Emirates.Skytrax = data.frame(Review.Title.Emirates = Review.Title.Emirates, Review.Text.Emirates = Review.Text.Emirates, Rating.Emirates = Rating.Emirates, Seat.Type.Emirates = Seattype.Emirates, Emirates.Aircaft = Aircraft.Emirates, Route.Emirates = Route.Emirates)
+
+
+```
+
+
+As you can see, the crawler is now extracting all information for the 100 first reviews. If you like to have more reviews you need to adapt the link so that it leads to the second page of reviews. Inspecting the review page links, we see that the page numbers are basically an element in the URL. So far we used the link for the 1st page with the first 100 reviews
+
+https://www.airlinequality.com/airline-reviews/emirates/page/1/?sortby=post_date%3ADesc&pagesize=100
+
+To access the second page we simply need to exchange the 1 in the URL by a 2.
+
+https://www.airlinequality.com/airline-reviews/emirates/page/2/?sortby=post_date%3ADesc&pagesize=100
+
+If we want to access lets say the reviews between 1800 and 1900, we consequently use 19.
+
+
+You certainly got the principle here. To make things easier we can instead of typing in each link seperately, use R’s loop function and ask R to go from 1 to 21 to extract all 2000 reviews from Emirates in one step with the following code. As you can see, we are now using the two variables page and endpage in a loop. R will execute the code between the {} brackets until the rule determined behind the while command is fulfilled. In our case this means it will run through the code until the condition page < endpage is fullfilled. So to say until page takes the value 22. As you can the last thing R does once going through the loop, is to add 1 to the value stored in the variable page. So everytime R passed one loop, page grows by 2. 
+
+
+```{r eval=TRUE, echo=TRUE}
+Airline.SkyTraxFull = data.frame()
+airline = "emirates"
+airline2 = paste0(airline, "/page/", sep ="")
+page = 1
+endpage = 30
+
+link1 = paste0("https://www.airlinequality.com/airline-reviews/", airline2, sep="")
+
+while(page < endpage){
+  
+  link = paste0(link1, page,"/?sortby=post_date%3ADesc&pagesize=100", sep="")
+  #Title
+  Review.Title.Airline <- read_html(link) %>% 
+    html_nodes(".comp_media-review-rated") %>%
+    html_node (".text_header") %>%
+    html_text() %>%
+    unlist()
+  
+  ##ReviewText
+  Review.Text.Airline <- read_html(link) %>% 
+    html_nodes(".comp_media-review-rated") %>%
+    html_node(".text_content") %>%
+    html_text() %>%
+    unlist()
+  
+  #Rating
+  Rating.Airline <- read_html(link) %>% 
+    html_nodes(".comp_media-review-rated") %>%
+    html_nodes(".rating-10") %>%
+    html_node("span:nth-child(1)") %>%
+    html_text() %>%
+    unlist()
+  
+  #Seat Type
+  
+  Seattype.Airline <- read_html(link) %>% 
+    html_nodes(".querylist") %>%
+    html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+    html_node(".cabin_flown+ .review-value") %>%
+    html_text() %>%
+    unlist()
+  
+  #Aircraft Type
+  Aircraft.Airline <- read_html(link) %>% 
+    html_nodes(".querylist") %>%
+    html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+    html_node(".aircraft+ .review-value") %>%
+    html_text() %>%
+    unlist()
+  
+  #Route
+  Route.Airline <- read_html(link) %>% 
+    html_nodes(".querylist") %>%
+    html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+    html_node(".route+ .review-value") %>%
+    html_text() %>%
+    unlist()
+  
+  Airline.Skytrax = data.frame(Review.Title.Airline = Review.Title.Airline, Review.Text.Airline = Review.Text.Airline, Rating.Airline = Rating.Airline, Seat.Type.Airline = Seattype.Airline, Airline.Aircaft = Aircraft.Airline, Route.Airline = Route.Airline)
+  Airline.SkyTraxFull = rbind(Airline.SkyTraxFull, Airline.Skytrax)
+  page = page +1
+Sys.sleep(1.5)
+
+}
+
+assign(paste(airline, ".SkyTraxFull", sep = ""), Airline.SkyTraxFull)
+```
+
+As we are only interested in the passengers, who flew Business Class, we need to filter the variable Seat.Type.Airline for the term "Business Class" which we achieve again with the help of dplyr's filter command. 
+
+```{r eval=TRUE, echo=TRUE}
+Emirates.BusinessClass = emirates.SkyTraxFull %>% filter(Seat.Type.Airline == "Business Class") 
+```
+
+In addition, we want to split the dataframe in satsified and dissatisfied customers. We rely on the NPS concept and use the common NPS split. This means all customers, who rated the experience below 8 are put into the dissatisfied customer frame and all passengers who gave a rating higher than 8 are assigned to the satisfied customer dataframe. However, before we can come to this point, we first need to tell R that the variable Rating is numeric, as it so far believes it to be a character. We achieve this by applying the as.numeric() function.
+
+```{r eval=TRUE, echo=TRUE}
+Emirates.BusinessClass$Rating.Airline = as.numeric(Emirates.BusinessClass$Rating.Airline)
+Emirates.BC.Satisfied = Emirates.BusinessClass %>% filter(Rating.Airline > 8)
+Emirates.BC.Dissatisfied = Emirates.BusinessClass %>% filter(Rating.Airline < 7)
+```
+
+By now you have probably figured out that we also included a field that allows you too specify the airline name. You can simply check the URLs from airlinequality.com and see each airline's url element and fill it in the above code to collect the remaining data. 
+
+This also means we can extend our loop from the previous call and embed it in a second loop that goes over all airlines we specific in another variable. Below's code will crawl now all airlines specified in the variable airline, filter for business class passengers and split the results in satisfied and dissatisfied users. Keep in mind that calling a page too many times, might get you banned, as the website owner might become suspicious of your crawling. To avoid this, we also integrate into our crawler a sleeping time of 1.5 seconds with Sys.sleep() at the end of each website call. Like this we ensure that the webpage does not become too suspicious and does not ban us. 
+
+Please be prepared for some waiting time, when you execute below's script. It will certainly take some time to get all airline data from the webpage. 
+
+```{r eval=TRUE, echo=TRUE}
+Airline.SkyTraxFull = data.frame()
+airline = c("turkish-airlines", "lufthansa", "qatar-airways", "singapore-airlines", "british-airways")
+airname = c("THY", "Lufthansa", "Qatar", "Singapore", "BritishAirways")
+airnum = length(airline)
+air = 1
+
+while(air <=  airnum){
+
+airline2 = paste0(airline[air], "/page/", sep ="")
+page = 1
+endpage = 15
+
+link1 = paste0("https://www.airlinequality.com/airline-reviews/", airline2, sep="")
+
+while(page < endpage){
+  
+  link = paste0(link1, page,"/?sortby=post_date%3ADesc&pagesize=100", sep="")
+  #Title
+  Review.Title.Airline <- read_html(link) %>% 
+    html_nodes(".comp_media-review-rated") %>%
+    html_node (".text_header") %>%
+    html_text() %>%
+    unlist()
+  
+  ##ReviewText
+  Review.Text.Airline <- read_html(link) %>% 
+    html_nodes(".comp_media-review-rated") %>%
+    html_node(".text_content") %>%
+    html_text() %>%
+    unlist()
+  
+  #Rating
+  Rating.Airline <- read_html(link) %>% 
+    html_nodes(".comp_media-review-rated") %>%
+    html_nodes(".rating-10") %>%
+    html_node("span:nth-child(1)") %>%
+    html_text() %>%
+    unlist()
+  
+  #Seat Type
+  
+  Seattype.Airline <- read_html(link) %>% 
+    html_nodes(".querylist") %>%
+    html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+    html_node(".cabin_flown+ .review-value") %>%
+    html_text() %>%
+    unlist()
+  
+  #Aircraft Type
+  Aircraft.Airline <- read_html(link) %>% 
+    html_nodes(".querylist") %>%
+    html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+    html_node(".aircraft+ .review-value") %>%
+    html_text() %>%
+    unlist()
+  
+  #Route
+  Route.Airline <- read_html(link) %>% 
+    html_nodes(".querylist") %>%
+    html_nodes(xpath = ".//article[contains(@class, 'comp comp_media-review-rated list-item media position-content review-')]") %>% 
+    html_node(".route+ .review-value") %>%
+    html_text() %>%
+    unlist()
+  
+  Airline.Skytrax = data.frame(Review.Title.Airline = Review.Title.Airline, Review.Text.Airline = Review.Text.Airline, Rating.Airline = Rating.Airline, Seat.Type.Airline = Seattype.Airline, Airline.Aircaft = Aircraft.Airline, Route.Airline = Route.Airline)
+  Airline.SkyTraxFull = rbind(Airline.SkyTraxFull, Airline.Skytrax)
+  page = page +1
+Sys.sleep(1.5)
+
+}
+
+AirlineSkytrax.BC = Airline.SkyTraxFull %>% filter(Seat.Type.Airline == "Business Class")
+AirlineSkytrax.BC$Rating.Airline = as.numeric(AirlineSkytrax.BC$Rating.Airline)
+AirlineSkytrax.BC.Satisfied = AirlineSkytrax.BC %>% filter(Rating.Airline > 8)
+AirlineSkytrax.BC.Dissatisfied = AirlineSkytrax.BC %>% filter(Rating.Airline < 7)
+
+assign(paste(airname[air], ".SkyTraxFull", sep = ""), Airline.SkyTraxFull)
+assign(paste(airname[air], ".BusinessClass", sep = ""), AirlineSkytrax.BC)
+assign(paste(airname[air], ".BC.Satisfied", sep = ""), AirlineSkytrax.BC.Satisfied)
+assign(paste(airname[air], ".BC.Dissatisfied", sep = ""), AirlineSkytrax.BC.Dissatisfied)
+
+air = air +1 
+
+}
+```
+
+
+Ok, this took a while! But the waiting was worth it. We can now finally combine the data to compare the share of satisifed and dissatisfied business class passengers across all airlines. We use the nrow function to count how many reviews we have in total, as well as the number of satsified and dissatisfied users. Subsequently, we use dplyr's mutate function to prepare a dataframe in which we calculate the shares of satisfied and dissatisfied users. 
+
+```{r eval=TRUE, echo=TRUE}
+
+Airlines = c("Emirates", "Qatar", "Singapore", "Lufthansa", "British Airways", "Turkish Airlines")
+
+Number.Reviews = c(
+  nrow(Emirates.BusinessClass),
+  nrow(Qatar.BusinessClass),
+  nrow(Singapore.BusinessClass),
+  nrow(Lufthansa.BusinessClass),
+  nrow(BritishAirways.BusinessClass),
+  nrow(THY.BusinessClass))
+
+Number.Dissatisfied = c(
+  nrow(Emirates.BC.Dissatisfied),
+  nrow(Qatar.BC.Dissatisfied),
+  nrow(Singapore.BC.Dissatisfied),
+  nrow(Lufthansa.BC.Dissatisfied),
+  nrow(BritishAirways.BC.Dissatisfied),
+  nrow(THY.BC.Dissatisfied))
+
+Satisfaction.Rates = data_frame(Airline = Airlines, N_Reviews = Number.Reviews, N_Dissatisfied = Number.Dissatisfied)
+Satisfaction.Rates = Satisfaction.Rates %>% mutate(
+  N_Satisfied = N_Reviews - N_Dissatisfied) %>% mutate(
+    Share_Satisfied = N_Satisfied/N_Reviews,
+    Share_Dissatisfied = N_Dissatisfied/N_Reviews)
+
+glimpse(Satisfaction.Rates)
+
+```
+
+So we now have all information together in the dataframe Satisfaction.Rates and can finally prepare some graphs. 
+
+```{r eval=TRUE, echo=TRUE}
+#Share of Dissatisfied
+
+ggplot(Satisfaction.Rates, aes(x= reorder(Airline,Share_Dissatisfied), y = Share_Dissatisfied)) +
+  geom_bar(stat = "identity", position = position_stack()) + 
+  labs(y="Share of Dissatisfied Users", x="Airline", title = "Rate of Dissatisfied User Reviews per Airline") + ylim (0,1)
+
+
+# Share of Satisfied
+ggplot(Satisfaction.Rates, aes(x= reorder(Airline,Share_Dissatisfied), y = Share_Satisfied)) +
+  geom_bar(stat = "identity", position = position_stack()) + 
+  labs(y="Share of Satisfied Users", x="Airline", title = "Rate of Satisfied User Reviews per Airline") + ylim (0,1)
+
+```
+From the plot we learn that Qatar Air and Singapore Air share the most satisfied business class travelers, while Turkish Airlines and British Airways share the least satisfied business class travelers. In the middle, we find Lufthansa and Emirates. While the bottom two airlines provide the opportunity to attract the many dissatisfied customers, the upper two airlines may allows us to investigate which things passengers really appreciate. 
+For the latter, we use again wordclouds to investigate the reviews from the satisfied Qatar and Singapore Air customers for often occurring terms and words. Let`s start with Qatar.
+
+
+```{r eval=TRUE, echo=TRUE}
+tidy_keywords.Qatar<- Qatar.BC.Satisfied %>%
+  unnest_tokens(word, Review.Text.Airline) %>% count(word) %>%
+  with(wordcloud(word, n, min.freq = 15, max.words = 30, random.order = FALSE)) 
+```
+
+A quick inspection of the plot  reveals, that the wordcloud does not provide any useful information. There are two reasons for this. First of all, we only see frequently occuring words such as the, two, of, or and. In linguistics these words are often referred to as stopwords. Only by removing these words we are able to find relevant words with a high occurrence. In addition, we must realize that looking at single words, makes it hard to interpret the meaning. Therefore we do not use the token function on word level, but on bigram level. Bigrams are a combination of words that are occuring together.  With the following code we can print the bigram wordclouds that do not feature any stopwords. 
+
+```{r eval=TRUE, echo=TRUE}
+data("stop_words")
+pal <- brewer.pal(8,"Dark2")
+
+tidy_keywords.ngramQatar<- Qatar.BC.Satisfied %>%
+  unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+  separate(word, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) %>%
+  count(word1, word2, sort = TRUE) %>% unite(bigram, word1, word2, sep = " ") %>%
+  with(wordcloud(bigram, n, min.freq = 15, max.words = 30, random.order = FALSE, colors=pal)) 
+
+tidy_keywords.ngramSingapore<- Singapore.BC.Satisfied %>%
+  unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+  separate(word, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) %>%
+  count(word1, word2, sort = TRUE) %>% unite(bigram, word1, word2, sep = " ") %>%
+  with(wordcloud(bigram, n, min.freq = 5, max.words = 30, random.order = FALSE, colors=pal)) 
+```
+
+We can repeat this now also for the airlines with the most dissatisfied passengers.
+
+```{r eval=TRUE, echo=TRUE}
+tidy_keywords.ngramTHY<- THY.BC.Dissatisfied %>%
+  unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+  separate(word, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) %>%
+  count(word1, word2, sort = TRUE) %>% unite(bigram, word1, word2, sep = " ") %>%
+  with(wordcloud(bigram, n, min.freq = 5, max.words = 30, random.order = FALSE, colors=pal)) 
+
+tidy_keywords.ngramBA<- BritishAirways.BC.Dissatisfied %>%
+  unnest_tokens(word, Review.Text.Airline, token = "ngrams", n = 2) %>%
+  separate(word, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) %>%
+  count(word1, word2, sort = TRUE) %>% unite(bigram, word1, word2, sep = " ") %>%
+  with(wordcloud(bigram, n, min.freq = 5, max.words = 30, random.order = FALSE, colors=pal)) 
+
+```
+
+---
+
+**Question**: Which things to satisfied customers especially highlight? What things do dissatisfied customers mostly complain about? What can we take away from this discussion for our positioning of Leviev Air?
+
+---
+
+To finally understand on which routes Leviev faces the best potential to acquire dissatisfied customers from British Airways and Turkish Airlines, we can at least see on which routes we observe the most dissatisfied reviews. To achieve this, we use dplyr’s group_by function with the summarise command to count how many times a route was mentioned in the corresponding dataframes. In addition, we only want to look at routes which are mentioned more than two times. Furthermore we rely on tidy’s drop_na to exclude all reviews in which no route was provided. 
+
+
+```{r eval=TRUE, echo=TRUE}
+
+Dis.routes.THY = THY.BC.Dissatisfied %>% 
+  group_by(Route.Airline) %>% 
+  summarise(Number = n(),
+         Airline = "THY") %>% filter(Number > 2) %>% drop_na()
+
+glimpse(Dis.routes.THY)
+
+Dis.routes.BA = BritishAirways.BC.Dissatisfied %>% 
+  group_by(Route.Airline) %>%
+  summarise(Number = n(),
+            Airline = "B.A.")  %>% filter(Number > 2) %>% drop_na()
+
+glimpse(Dis.routes.BA)
+
+```
+
+From a quick inspection with glimpse() we learn that for THY only the connection between Istanbul and London appears multiple times. This is rather unsurprising as Istanbul is THY's main hub.
+
+In case of BA we find however more routes. So let's see if we can use a plot to learn more.
+
+```{r eval=TRUE, echo=TRUE}
+ggplot(Dis.routes.BA, aes(x= reorder(Route.Airline,-Number), y = Number)) +
+  geom_bar(stat = "identity", position = position_stack()) + 
+  labs(y="N", x="Route", title = "Number of times a route is mentioned in a negtive review") +
+  theme(axis.text.x=element_text(angle=90, hjust=1))
+```
+
+It looks like that British Airways business class passengers are especially unhappy on flights from and to Johannesburg, Hong Kong, New York, Chicago and Bangkog. Keep in mind that passengers have coded the routes differently, and we could still improve the graph by e.g. combining LHR to HKG with London to Hong Kong or by combining tours so that we combine London to Johannesburg with Johannesburg to London. Still the graph already helps us to determine the routes with the most upset customers, which we can now target.
+
+Leviev Air can now take these insights as a starting point for their launch campaign. One way to leverage these insights could be a Search Engine Advertising campaign (SEA) in which Leviev uses keywords related to the identified routes with high volume of dissatisfied customers. Meanwhile, Leviev Air may also accentuate its priority service, high service quality and its full bed seats and on board entertainment service. 
+
+

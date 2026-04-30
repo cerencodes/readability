@@ -1,0 +1,126 @@
+﻿Part 1: The Final Methodology (Your Chapter 3 Contribution)
+Analytics Objective #2: Assessing chatbot service quality, analyzing the impact of Readability on Empathy to drive continuous use and brand loyalty based on the developed LLM-based evaluation framework. (Revised AO) 
+Method to be used: This study uses an LLM-based evaluation framework to examine whether chatbot responses that score higher on readability are also perceived as more (or less) empathetic. The framework is composed of user inquiry (context) and chatbot response (content). The data is processed in two workflows: First, two readability indices are computed from the content via an R script. Second, two large language models simultaneously rate the Empathy level of the content based on the SERVQUAL framework. Provided the two LLMs exceed the agreement threshold, the readability indices and the average of LLM ratings are combined in a single dataset ready for analysis. This method automates the evaluation of textual content without the need for customer data. 
+The first part of the framework evaluates chatbot language by employing two widely recognized readability indices: Flesch-Kincaid Grade Level for structural difficulty and New Dale-Chall Readability Formula for lexical difficultyl. Using both scores gives us an objective and holistic assessment of the textual difficulty level, while also being interpretable as they are on a scale of US Education system grade levels (Friedman & Hoffman-Goetz, 2006). 
+Flesch-Kincaid Grade Level Formula:
+  
+
+New Dale-Chall Readability Formula:
+  
+
+In preparation for text analysis, the chatbot responses are cleaned, standardized, and lemmatized. This ensures there is no rogue character or punctuation that will compromise the syllable, word and sentence count used in the readability formulas. Furthermore, the lemmatization process ensures all words are in a standardized form that can be founds in the 3,000 familiar word list used by New Dale-Chall formula. Finally, readability metrics (Flesch–Kincaid Grade Level, New Dale–Chall) are calculated from the cleaned responses in R. 
+The second part of the framework uses multiple large language models to simulate customer survey responses to evaluate the SERVQUAL-based Empathy construct perceived by customers in reaction to the chatbot content. LLM-as-judge reliability approaches expert reliability and generally exceeds crowdworker reliability when the construct is defined with clear, observable linguistic and behavioral markers (Kumar 2026). Therefore, we built a React app (“Customerbot”), that connects to three LLMs via API and rates each row of content line-by-line based on the instructions defined in the system prompt. To produce stable and repeatable ratings, the system prompt outlines a clear construct definition, inclusion and exclusion criteria grounded in observable evidence, and few-shot annotated examples (Kumar 2026). The main construct is Empathy, and the prompt breaks Empathy down into four survey items from the SERVQUAL framework (Parasuraman 1988):
+Item / Variable
+	Definition in the Promp
+	individual_attention
+	The response refers to the customer’s specific situation, constraints, or use case rather than giving a generic answer.
+	caring_tone
+	The response uses a supportive, reassuring, non-dismissive tone and acknowledges any discomfort, worry, or frustration expressed by the customer.
+	customer_first_orientation
+
+
+	The response prioritizes the customer’s comfort, safety, fit, or stated goals rather than sounding salesy, scripted, or product-first.
+	need_understanding
+	The response accurately identifies the customer’s stated need or problem and explains how the recommendation addresses it.
+	
+
+The system prompt instructs each LLM to read the definition, inclusion/exclusion criteria of each survey item before rating the content on a 5-point Likert scale per item. The ratings are then averaged to compute the average empathy rating of the content. To validate the ratings when needed, LLMs are instructed to output the reasoning behind their rating for each item in separate columns. 
+        Agreements between the two LLMs is key to ensuring the reliability of the LLM-based SERVQUAL evaluation. After obtaining the Empathy ratings from both LLMs, the app computes the quadratically weighted kappa to report the agreement of rating on an ordinal scale. If the agreement is above 0.6, the LLM ratings are assumed to be reliable. If not, the prompt is further refined using the Structured Taxonomy AI Measurement Protocol (STAMP) framework, with two LLMs providing both ratings and supporting reasoning, and a third LLM summarizing the reasons for disagreement, alongside ordinal agreement metrics such as weighted kappa (Lin 2026). STAMP enables large language models to function as evaluators that audit one another against a shared construct definition, thereby producing transparent, reliable, and replicable classifications of digital marketing data. The third LLM reviews the rows where the original two LLMs disagreed and compares their reasoning for each item they disagree on.  The third LLM summarizes the reasons for disagreement to recommend which points in the prompt need clarification, elaboration or more examples. We edit the prompt based on the recommendations and run the ratings again until we achieve quadratically weighted kappa greater than 0.6, demonstrating  inter-rater reliability. After the reliability of the Empathy rating is ensured, the data is used for regression analysis. 
+The unit of analysis is each (context, content) pair in the dataset (25 unique user questions; 450 chatbot responses). Questions are used for context, informing the LLM-powered customer personas rating the Empathy of responses. Responses are used to compute readability scores and are rated by the customer personas. For each response, readability metrics are computed from the text, and an empathy score is generated by LLM-powered customer personas using a standardized rubric. Empathy is treated as the dependent variable and readability measures as the primary independent variables; model and prompt condition can be included as controls to separate readability effects from model/prompt-specific style artifacts. 
+The final dataset is analyzed using fixed-effects multiple linear regression, with quadratic terms to capture the curvature (Appendix A). The primary analysis estimates a regression of persona-rated empathy on the readability metrics, with question fixed effects to hold the underlying customer need constant and isolate differences driven by response language. This specification leverages the fact that many responses address the same question, enabling within-question comparisons that reduce confounding from topic/content variation. The estimated relationship indicates whether optimizing for high readability (clear, concise language) is aligned with or in tension with perceived empathy, which is relevant for chatbot service quality and long-term brand outcomes in prior chatbot service research. 
+  
+
+Justification for the method: This method is appropriate because it uses well-studied readability metrics to objectively quantity and evaluate textual characteristics that impact user experience. Both structural and lexical difficulty is taken into account to gain a wholistic understanding of how the text is perceived by the user and whether it is at an acceptable difficulty level for the average user (8th grade in US education system) (Friedman & Hoffman-Goetz, 2006). Combined, they act as a proxy to assessing reading comprehension (Singh et al., 2024) and how that affect user’s perception of the empathetic capability of the chatbot .  
+The ODI dataset is comprised of 25 user inquiries and 276 single-message chatbot responses to those inquiries, responses changing depending on the LLM and prompt used to generate responses. Prompt and model choice changes how responses are written while keeping the product recommendation the same. As a result, the differences in perceived empathy can be linked to language features captured by readability metrics. Prior chatbot research shows that language cues can shift perceived empathy, and that satisfaction derived from such service-quality perceptions predicts downstream business outcomes such as repurchase intention and positive word-of-mouth (Yoon et al. (2022), Kull et al. (2021), Hsu & Lin (2023)). Therefore, estimating the readability-empathy relationship provides a business-relevant diagnostic of whether readability optimization risks eroding an important service-quality driver. 
+LLM
+	Prompt ID
+	Conversation 
+ID
+	Context
+	Content
+	anthropic/claude-sonnet-4.5
+	0
+	1
+	I love to mountain bike with my friends on the weekend, but as I have gotten older I notice my hands are hurting more and more after each ride. I currently run the Ruffian Lock-On grips. Can you recommend a grip that will help me ride with less pain?
+	Based on your situation, I recommend the **REFLEX LOCK-ON GRIPS**. **Why this fits your needs:** You're currently using the Ruffian grips, which have a thin feel with aggressive knurling and **low damping**. This means significant feedback (vibration) transfers directly to your hands. The Reflex grips offer **high damping level** — specifically designed to reduce impacts and vibration. They feature a thicker diameter (33.5mm vs 30mm) with an angled waffle pattern and ribbed palm side that conforms to your hands. This design reduces torsional forces and absorbs trail chatter. The Reflex is built for comfort while maintaining great traction. The softer palm side cushions your hands during longer rides, which directly addresses your hand pain issue. **Product:** REFLEX LOCK-ON GRIPS   **Price:** $30.95   **Available in:** Black, Red, Gray, Army Green, Tan, Blue, Orange, Pink, Purple This upgrade should significantly reduce hand fatigue on your weekend rides while keeping the lock-on security you're used to.
+
+
+	
+
+To answer the objective, the study uses linear regression (OLS) as the primary analytical model, estimated with question as fixed effects. OLS is mathematically appropriate because the dependent variable is collected on a bounded Likert-type scale and is treated as continuous for estimating marginal effects of readability metrics; the fixed-effects structure is appropriate because the same 25 questions repeat across many responses, and there may be systematic differences between questions. Certain questions inherently illicit more empathetic responses (e.g. injury related), which would be falsely attributed to readability if not controlled. 
+Variables to be used: Readability scores serve as independent variables. A group of complementary measures capture different aspects of text complexity: Flesch–Kincaid Grade Level (sentence/word structural complexity), New Dale–Chall (lexical difficulty/familiarity). Together, these metrics represent the study’s working definition of clarity: higher readability corresponds to language that is easier to process, less verbose, and more to-the-point. 
+The dependent variable Empathy is measured as a rubric-based score assigned by LLM-powered customer personas after reading each (question, response) pair. The rubric evaluates whether the chatbot acknowledges the user’s situation and constraints, uses considerate/supportive language, and conveys emotional attunement where appropriate. Empathy is selected because it is a commonly used chatbot service-quality dimension and prior experimental evidence shows that language choices (e.g., adding emotion words) can increase empathy’s influence on customer satisfaction, which in turn predicts loyalty-related outcomes such as repurchase intention and positive WOM (Yun et al. (2022), Kull et al. (2021), Hsu & Lin (2023)). 
+Validation: We validated the FKGL fixed-effects OLS regression using a standard set of diagnostics and robustness checks focused on the key risks for this dataset: Nonlinear functional form, multicollinearity from the quadratic term, heteroskedasticity from a 1–5 outcome, within-question dependence, and influential observations. First, we checked functional form. A partial residual plot (component-plus-residual) suggested the FKGL relationship was not strongly curved (Appendix C1), so we ran a second, more formal comparison that does not assume a quadratic: we fit a natural spline for FKGL and compared it to the linear FKGL model (Appendix C2). The spline significantly improved fit, supporting a nonlinear FKGL–empathy relationship and motivating retention of a nonlinear specification (quadratic or spline). Second, we addressed collinearity created by including both FKGL and FKGL² by centering FKGL before squaring and verifying low collinearity with VIF/GVIF, indicating the model could separate the linear and curved components reliably (Appendix D1). Third, we tested for heteroskedasticity using the Breusch–Pagan test and found evidence of non-constant variance; as a result, we reported inference using HC3 robust standard errors (appendix D2). We also examined residual normality using the Shapiro–Wilk test (Appendix D4); minor deviations from normality were expected for a bounded Likert outcome, and robust standard errors were used to reduce sensitivity to this assumption. Fourth, because responses are nested within the same question (conversation_id), we evaluated sensitivity to within-question dependence by re-estimating uncertainty with cluster-robust standard errors at the question level; conclusions for the FKGL terms were stable (Appendix B3). Fifth, we checked influential observations using an influence plot and reran the model after removing the most influential rows; the FKGL pattern remained, indicating the main relationship was not driven by a few outliers  (Appendix D3). Finally, we ran a subgroup analysis by LLM to assess whether the FKGL–empathy relationship generalizes across models; results indicated the pattern is model-dependent, informing interpretation and deployment recommendations (Appendix E1).
+For Dale–Chall, we followed the same validation framework used for the FKGL model to confirm that specification and inference were appropriate. We first evaluated functional form by comparing a linear Dale–Chall fixed-effects model to a flexible spline specification. The spline did not significantly improve model fit, indicating that the Dale–Chall–empathy relationship can be treated as approximately linear in this dataset (Appendix C4). We then assessed multicollinearity in the linear specification using VIF/GVIF and found low values, suggesting that Dale–Chall is not overly redundant with the included controls and fixed effects (Appendix D2).
+Residual normality was examined using Q–Q plots and the Shapiro–Wilk test (Appendix D4). Minor deviations from normality were observed, which are expected given the bounded 1–5 Likert outcome; accordingly, inference was based on heteroskedasticity-robust standard errors. The Breusch–Pagan test indicated non-constant variance, so HC3 robust standard errors were used as the primary inference method (Appendix D1). Under HC3, Dale–Chall exhibited a small positive association with empathy, but the effect was weak and only marginally distinguishable from zero. When uncertainty was re-estimated using cluster-robust standard errors at the question level to account for potential within-question dependence, the Dale–Chall effect was no longer statistically distinguishable from zero (Appendix B4).
+An influence analysis showed that removing the most influential observations did not materially change the direction of the Dale–Chall coefficient, indicating that the pooled result is not driven by a small number of extreme cases (Appendix B3). Finally, subgroup analyses by LLM revealed that the Dale–Chall–empathy relationship is not consistent across models; effect sizes were small and statistically weak within each model, and the direction varied (Appendix E2). 
+Taken together, these diagnostics indicate that Dale–Chall does not demonstrate a robust or model-consistent relationship with empathy in this dataset.
+Part 2: Visual Evidence & Results (Your Chapter 4 Contribution)
+The findings provide insights into how chatbot language complexity influences the empathy perceived by ODI customers, which has direct implications for customer experience and brand engagement. Language complexity was analyzed in two ways: structural and lexical difficulty. LLM customer personas evaluated the language in terms of how empathetic they found the chatbot, using a SERVQUAL-based survey. While structural difficulty of the responses had meaningful impact on how customers reported perceived empathy from the chatbot, lexical difficulty did not.
+Structural difficulty of the chatbot language, as measured by the Flesch–Kincaid Grade Level (FKGL), demonstrated a meaningful and nonlinear relationship with empathy. Roughly 80% of the variation in empathy scores is explained by the model. This indicates the model captures the primary drivers of chatbot empathy performance. This suggests that model choice, question context, and readability collectively account for a substantial portion of perceived empathy differences. Empathy ratings increased as language complexity rose from very simple to moderately sophisticated levels, peaking at approximately a Grade 11–12 reading level. Beyond this point, further increases in complexity were associated with a decline in perceived empathy. Essentially, moving from elementary-level language (e.g., Grade 6–7) to this optimal range improved empathy scores by approximately 0.3–0.5 points on a five-point scale, representing a meaningful shift in customer perception. These results indicate the presence of a “sweet spot,” where responses that are clear yet naturally conversational are perceived as most empathetic. 
+  
+
+Figure X
+In contrast, lexical difficulty, measured using the Dale–Chall readability formula, exhibited a weaker and less consistent relationship with empathy. Although the analysis initially suggested a small positive relationship, the effect was very small and became uncertain when we applied more cautious testing methods. When we looked at each LLM separately, the impact of vocabulary difficulty changed — varying between positive and negative across models, and often small. This means word difficulty alone is not a reliable way to increase perceived empathy. These findings suggest that vocabulary complexity plays a secondary role in shaping customer perceptions of chatbot empathy relative to structural difficulty.
+Across both readability measures, model choice emerged as the strongest predictor of empathy. Responses generated by the Gemini configuration were associated with an approximately 0.7-point reduction in empathy on a five-point scale relative to the reference model. This difference was large in magnitude and statistically robust across all inference corrections. GPT-4.1-mini, by contrast, did not significantly differ from the reference model.  
+Variable
+	FKGL Model (HC3)
+	Dale–Chall Model (HC3)
+	FKGL
+	0.195*** (0.055)
+	—
+	FKGL²
+	−0.008** (0.003)
+	—
+	Dale–Chall
+	—
+	0.106+ (0.056)
+	Gemini (vs ref)
+	−0.563***
+	−0.723***
+	GPT-4.1-mini
+	−0.029
+	−0.005
+	R²
+	0.804
+	0.791
+	N
+	276
+	276
+	
+
+Table X
+Prompt configuration effects were comparatively modest. Although some prompts showed directional differences within specific models, prompt coefficients were generally small and not consistently significant across specifications. The magnitude of prompt effects was substantially smaller than model-level differences and smaller than the structural readability effect observed for FKGL.
+Readability Measure
+	Effect on Empathy
+	Interpretation
+	FKGL
+	Inverted-U
+	Moderate complexity increases empathy
+	Dale–Chall
+	Small, not robust
+	Lexical difficulty not a reliable driver
+	Table X
+These findings establish a clear hierarchy of influence on perceived empathy: model selection exerts the largest effect, followed by structural readability optimization, with prompt adjustments contributing comparatively smaller refinements.
+
+
+Part 3: Limitations & The Strategic Bridge
+One important limitation of this analysis is that empathy was evaluated using LLM-generated customer personas rather than real customer ratings. While this synthetic evaluation approach enables controlled and scalable testing, it may not fully capture how actual ODI customers perceive chatbot responses in real-world interactions. As a result, the estimated effects of readability, model choice, and prompt configuration reflect simulated judgments and may differ from true customer sentiment once the chatbot is deployed live.
+Ultimately, the model selection exerts the largest influence on perceived empathy, followed by structural difficulty within a defined “sweet spot”. As a result, our upcoming strategic recommendations will prioritize selecting the highest-performing LLM configuration and standardizing response guidelines around a conversational high-school reading level to maximize customer engagement and long-term brand loyalty for ODI.
+Chapter 5 (Draft)
+From a business perspective, these findings suggest that ODI can enhance chatbot performance by optimizing language to achieve a balanced, conversational tone corresponding to a high-school reading level. Responses that are overly simplified risk appearing mechanical or impersonal, whereas excessively complex responses may reduce clarity and emotional connection. While lexical simplicity supports usability, it should not be the primary focus of optimization efforts. Instead, strategic investments in model selection, prompt design, and structural readability will yield the greatest improvements in perceived empathy, customer satisfaction, and long-term brand engagement.
+Collectively, the results demonstrate that readability is a meaningful but secondary determinant of chatbot service quality. Structural readability exerts a stronger and more consistent influence on empathy than lexical difficulty, and both effects are moderated by model characteristics. These insights provide a data-driven foundation for optimizing ODI’s chatbot deployment to support improved customer interactions, sustained engagement, and enhanced brand loyalty.
+
+
+
+
+References
+
+
+Friedman DB, Hoffman-Goetz L. A systematic review of readability and comprehension instruments used for print and web-based cancer information. Health Educ Behav. 2006 Jun;33(3):352-73. doi: 10.1177/1090198105277329. PMID: 16699125. 
+Hsu, C., & Lin, J.C. (2023), “Understanding the user satisfaction and loyalty of customer service chatbots,” Journal of Retailing and Consumer Services, 71, 103211. https://doi.org/10.1016/j.jretconser.2022.103211
+Kull, A.J., Romero, M., & Monahan, L. (2021), “How may I help you? Driving brand engagement through the warmth of an initial chatbot message,” Journal of Business Research, 135, 840–850. https://doi.org/10.1016/j.jbusres.2021.03.005
+Kumar, A., Poungpeth, N., Yang, D. et al. When large language models are reliable for judging empathic communication. Nat Mach Intell 8, 173–185 (2026). https://doi.org/10.1038/s42256-025-01169-6
+Singh S, Jamal A, Qureshi F. Readability Metrics in Patient Education: Where Do We Innovate? Clin Pract. 2024 Nov 4;14(6):2341-2349. doi: 10.3390/clinpract14060183. PMID: 39585011; PMCID: PMC11586978.
+Parasuraman, A., Zeithaml, V.A., & Berry, L.L. (1988), “SERVQUAL: A multiple‐item scale for measuring consumer perceptions of service quality,” Journal of Retailing, 64(1), 12–40.
+Yun, J., & Park, J. (2022), “The effects of chatbot service recovery with emotion words on customer satisfaction, repurchase intention, and positive word-of-mouth,” Frontiers in Psychology, 13, 922503. https://doi.org/10.3389/fpsyg.2022.922503

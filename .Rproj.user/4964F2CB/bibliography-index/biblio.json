@@ -1,0 +1,263 @@
+{
+    "sources": [
+        {
+            "DOI": "10.1177/00472875241228822",
+            "author": [
+                {
+                    "family": "Yu",
+                    "given": "Jianling"
+                },
+                {
+                    "family": "Hong",
+                    "given": "Wei Chong Howard"
+                },
+                {
+                    "family": "Egger",
+                    "given": "Roman"
+                }
+            ],
+            "container-title": "Journal of Travel Research",
+            "id": "yu2024readability",
+            "issue": "4",
+            "issued": {
+                "date-parts": [
+                    [
+                        2024
+                    ]
+                ]
+            },
+            "page": "853-866",
+            "title": "The art of post captions: Readability and user engagement on social media",
+            "title-short": "The art of post captions",
+            "type": "article-journal",
+            "volume": "64"
+        },
+        {
+            "DOI": "10.1002/jcpy.1073",
+            "author": [
+                {
+                    "family": "Pancer",
+                    "given": "Ethan"
+                },
+                {
+                    "family": "Chandler",
+                    "given": "Vincent"
+                },
+                {
+                    "family": "Poole",
+                    "given": "Matthew"
+                },
+                {
+                    "family": "Noseworthy",
+                    "given": "Theodore J."
+                }
+            ],
+            "container-title": "Journal of Consumer Psychology",
+            "id": "pancer2019readability",
+            "issue": "2",
+            "issued": {
+                "date-parts": [
+                    [
+                        2019
+                    ]
+                ]
+            },
+            "page": "262-270",
+            "title": "How readability shapes social media engagement",
+            "type": "article-journal",
+            "volume": "29"
+        },
+        {
+            "DOI": "10.3758/BRM.42.2.381",
+            "author": [
+                {
+                    "family": "McCarthy",
+                    "given": "Philip M."
+                },
+                {
+                    "family": "Jarvis",
+                    "given": "Scott"
+                }
+            ],
+            "container-title": "Behavior Research Methods",
+            "id": "mccarthy2010mtld",
+            "issue": "2",
+            "issued": {
+                "date-parts": [
+                    [
+                        2010
+                    ]
+                ]
+            },
+            "page": "381-392",
+            "title": "MTLD, vocd-D, and HD-D: A validation study of sophisticated approaches to lexical diversity assessment",
+            "title-short": "MTLD, vocd-D, and HD-D",
+            "type": "article-journal",
+            "volume": "42"
+        },
+        {
+            "DOI": "10.1016/j.sapharm.2012.05.009",
+            "author": [
+                {
+                    "family": "Wang",
+                    "given": "Ling-Wei"
+                },
+                {
+                    "family": "Miller",
+                    "given": "Michael J."
+                },
+                {
+                    "family": "Schmitt",
+                    "given": "Maryellen Rousseau"
+                },
+                {
+                    "family": "Wen",
+                    "given": "Feng-Kuang"
+                }
+            ],
+            "container-title": "Research in Social and Administrative Pharmacy",
+            "id": "wang2013readability",
+            "issue": "5",
+            "issued": {
+                "date-parts": [
+                    [
+                        2013
+                    ]
+                ]
+            },
+            "page": "503-516",
+            "title": "Assessing readability formula differences with written health information materials: Application, results, and recommendations",
+            "title-short": "Assessing readability formula differences with written health information materials",
+            "type": "article-journal",
+            "volume": "9"
+        },
+        {
+            "DOI": "10.1016/j.jbusres.2019.01.071",
+            "author": [
+                {
+                    "family": "Davis",
+                    "given": "Scott W."
+                },
+                {
+                    "family": "Horváth",
+                    "given": "Csilla"
+                },
+                {
+                    "family": "Gretry",
+                    "given": "Anaïs"
+                },
+                {
+                    "family": "Belei",
+                    "given": "Nina"
+                }
+            ],
+            "container-title": "Journal of Business Research",
+            "id": "davis2019tweet",
+            "issued": {
+                "date-parts": [
+                    [
+                        2019
+                    ]
+                ]
+            },
+            "page": "150-164",
+            "title": "Say what? How the interplay of tweet readability and brand hedonism affects consumer engagement",
+            "type": "article-journal",
+            "volume": "100"
+        },
+        {
+            "author": [
+                {
+                    "family": "Narman",
+                    "given": "Humayun S."
+                },
+                {
+                    "family": "Uulu",
+                    "given": "Asanbek Dzhaksybekov"
+                },
+                {
+                    "family": "Liu",
+                    "given": "Jiang"
+                }
+            ],
+            "container-title": "IEEE international symposium on signal processing and information technology",
+            "id": "narman2018crypto",
+            "issued": {
+                "date-parts": [
+                    [
+                        2018
+                    ]
+                ]
+            },
+            "title": "Profile analysis for cryptocurrency in social media",
+            "type": "paper-conference"
+        },
+        {
+            "DOI": "10.1016/j.system.2012.10.017",
+            "author": [
+                {
+                    "family": "Koizumi",
+                    "given": "Rie"
+                },
+                {
+                    "family": "In’nami",
+                    "given": "Yo"
+                }
+            ],
+            "container-title": "System",
+            "id": "koizumi2012textlength",
+            "issue": "4",
+            "issued": {
+                "date-parts": [
+                    [
+                        2012
+                    ]
+                ]
+            },
+            "page": "522-532",
+            "title": "Effects of text length on lexical diversity measures: Using short texts with less than 200 tokens",
+            "title-short": "Effects of text length on lexical diversity measures",
+            "type": "article-journal",
+            "volume": "40"
+        },
+        {
+            "author": [
+                {
+                    "family": "Gkikas",
+                    "given": "Dimitris C."
+                },
+                {
+                    "family": "Tzafilkou",
+                    "given": "Katerina"
+                },
+                {
+                    "family": "Theodoridis",
+                    "given": "Prokopis K."
+                },
+                {
+                    "family": "Garmpis",
+                    "given": "Apostolos"
+                },
+                {
+                    "family": "Gkikas",
+                    "given": "Nikolaos D."
+                }
+            ],
+            "container-title": "International Journal of Information Management Data Insights",
+            "id": "gkikas2022readability",
+            "issue": "1",
+            "issued": {
+                "date-parts": [
+                    [
+                        2022
+                    ]
+                ]
+            },
+            "page": "100081",
+            "title": "How do text characteristics impact user engagement in social media posts?",
+            "type": "article-journal",
+            "volume": "2"
+        }
+    ],
+    "project_biblios": []
+}
