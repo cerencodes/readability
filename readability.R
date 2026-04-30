@@ -5,6 +5,11 @@ library(stringi)
 library(data.table)
 library(textstem)
 
+# Prefer a dedicated data folder when present, but keep root-level fallback
+# so the script remains portable across old and new repo layouts.
+data_dir <- if (dir.exists("data")) "data" else "."
+data_file <- function(filename) file.path(data_dir, filename)
+
 
 
 
@@ -14,35 +19,35 @@ library(textstem)
 # ==============================================================================
 
 #Import dataset containing questions
-conversations <- read.csv("sample_qa.csv")
+conversations <- read.csv(data_file("sample_qa.csv"))
 
 #Import Baseline Prompt datasets
-df_baseline_p0p1 <- read_csv("20260223_temp0_topk5_all_p0p1.csv")
+df_baseline_p0p1 <- read_csv(data_file("20260223_temp0_topk5_all_p0p1.csv"))
 df_baseline_p0p1$prompt_id[df_baseline_p0p1$prompt_id == "p0"] <- "0"
 df_baseline_p0p1$prompt_id[df_baseline_p0p1$prompt_id == "p1"] <- "1"
 
-df_baseline_p2p3 <- read_csv("20260223_temp0_topk5_all_p2p3.csv")
+df_baseline_p2p3 <- read_csv(data_file("20260223_temp0_topk5_all_p2p3.csv"))
 df_baseline_p2p3$prompt_id[df_baseline_p2p3$prompt_id == "p2"] <- "2"
 df_baseline_p2p3$prompt_id[df_baseline_p2p3$prompt_id == "p3"] <- "3"
 
-df_baseline_p4 <- read_csv("20260223_temp0_topk5_all_p4.csv")
+df_baseline_p4 <- read_csv(data_file("20260223_temp0_topk5_all_p4.csv"))
 df_baseline_p4$prompt_id[df_baseline_p4$prompt_id == "p4"] <- "4"
 
 #Import Readability Prompt datasets
-df_readability_p01_p11 <- read_csv("20260224_temp0_topk5_all_p0.1p1.1.csv")
+df_readability_p01_p11 <- read_csv(data_file("20260224_temp0_topk5_all_p0.1p1.1.csv"))
 df_readability_p01_p11$prompt_id[df_readability_p01_p11$prompt_id == "A"] <- "0.1"
 df_readability_p01_p11$prompt_id[df_readability_p01_p11$prompt_id == "B"] <- "1.1"
 
-df_readability_p02_p12 <- read_csv("20260303_temp0_topk5_all_p0.2p1.2.csv")
+df_readability_p02_p12 <- read_csv(data_file("20260303_temp0_topk5_all_p0.2p1.2.csv"))
 df_readability_p02_p12$prompt_id[df_readability_p02_p12$prompt_id == "A"] <- "0.2"
 df_readability_p02_p12$prompt_id[df_readability_p02_p12$prompt_id == "B"] <- "1.2"
 
-df_readability_p21_p31 <- read_csv("20260224_temp0_topk5_all_p2.1p3.1.csv")
+df_readability_p21_p31 <- read_csv(data_file("20260224_temp0_topk5_all_p2.1p3.1.csv"))
 df_readability_p21_p31 $prompt_id[df_readability_p21_p31$prompt_id == "A"] <- "2.1"
 df_readability_p21_p31 $prompt_id[df_readability_p21_p31 $prompt_id == "B"] <- "3.1"
 
 
-df_readability_p41 <- read_csv("20260224_temp0_topk5_all_p4.1.csv")
+df_readability_p41 <- read_csv(data_file("20260224_temp0_topk5_all_p4.1.csv"))
 df_readability_p41 <- df_readability_p41[df_readability_p41$prompt_id != "B", ]
 df_readability_p41$prompt_id[df_readability_p41$prompt_id == "A"] <- "4.1"
 
@@ -741,7 +746,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
 
 
 #Import customerbot dataset for clarity
-clarity <- read_csv("customerbot-results.csv")
+clarity <- read_csv(data_file("customerbot-results.csv"))
 
 #Join clarity metrics to the main dataset
 df_clarity <- df_metrics %>%
@@ -865,7 +870,7 @@ visreg(fit_dc_fe, "dale_chall_quanteda", gg = TRUE, partial = TRUE) +
 # 
 # ==============================================================================
   
-  empathy <- read_csv("customerbot-results-2.csv")
+  empathy <- read_csv(data_file("customerbot-results-2.csv"))
   
   df_empathy <- df_metrics %>%
     left_join(

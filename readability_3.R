@@ -11,19 +11,24 @@ library(visreg)
 library(modelsummary)
 library(flextable)
 library(officer)
+
+# Prefer a dedicated data folder when present, but keep root-level fallback
+# so the script remains portable across old and new repo layouts.
+data_dir <- if (dir.exists("data")) "data" else "."
+data_file <- function(filename) file.path(data_dir, filename)
 # *****************************************************************************
 # IMPORT DATA: Chatbot Responses ----
 # *****************************************************************************
 
 #Import dataset containing questions
-conversations <- read.csv("sample_qa.csv")
+conversations <- read.csv(data_file("sample_qa.csv"))
 
 #Import Prompt datasets
-df_baseline_p0p1 <- read_csv("20260324_temp0_topk5_all_p0_p1.csv")
+df_baseline_p0p1 <- read_csv(data_file("20260324_temp0_topk5_all_p0_p1.csv"))
 df_baseline_p0p1$prompt_id[df_baseline_p0p1$prompt_id == "A"] <- "0"
 df_baseline_p0p1$prompt_id[df_baseline_p0p1$prompt_id == "B"] <- "1"
 
-df_baseline_p2p3 <- read_csv("20260324_temp0_topk5_all_p2_p3.csv")
+df_baseline_p2p3 <- read_csv(data_file("20260324_temp0_topk5_all_p2_p3.csv"))
 df_baseline_p2p3$prompt_id[df_baseline_p2p3$prompt_id == "A"] <- "2"
 df_baseline_p2p3$prompt_id[df_baseline_p2p3$prompt_id == "B"] <- "3"
 
@@ -162,7 +167,7 @@ toks_word <- quanteda::tokens(
 toks_word <- tokens_tolower(toks_word)
 
 # Load External Dale-Chall familiar-word list normalized for inflectional matching----
-dc_familiar <- readLines("dalechall_3000.txt", warn = FALSE) %>%
+dc_familiar <- readLines(data_file("dalechall_3000.txt"), warn = FALSE) %>%
   tolower() %>%
   textstem::lemmatize_words() %>%
   unique()
@@ -481,7 +486,7 @@ ggplot(dc_client_plot_df, aes(x = prompt_label, y = emmean, color = threshold_fl
 # IMPORT DATA: Empathy Scores ----
 # *****************************************************************************
 
-empathy <- read_csv("customerbot-results.csv")
+empathy <- read_csv(data_file("customerbot-results.csv"))
 
 df_empathy <- df_metrics %>%
   mutate(row_id = as.numeric(as.character(row_id))) %>%
